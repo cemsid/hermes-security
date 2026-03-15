@@ -1,0 +1,2461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hermes Security — Autonomous Vulnerability Scanner</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<link rel="icon" type="image/png" href="/Hermes.png">
+<link rel="shortcut icon" type="image/png" href="/Hermes.png">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --white:#ffffff;--bg:#f4f6f9;--bg2:#eef1f5;
+  --card:#ffffff;--border:#e2e6ed;--border2:#d0d7e3;
+  --text:#1a2332;--muted:#6b7a90;--dim:#9aa5b4;
+  --blue:#0066ff;--blue2:#3385ff;--blue-bg:#f0f5ff;--blue-border:#c7d9ff;
+  --green:#00875a;--green-bg:#e3fcef;--green-border:#abf5d1;
+  --yellow:#ff991f;--yellow-bg:#fffae6;--yellow-border:#ffe380;
+  --orange:#ff7452;--orange-bg:#fff0ed;--orange-border:#ffbdad;
+  --red:#de350b;--red-bg:#ffebe6;--red-border:#ffbdad;
+  --purple:#6554c0;--purple-bg:#f3f0ff;--purple-border:#c0b6f2;
+  --cyan:#00b8d9;--cyan-bg:#e6fcff;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;min-height:100vh}
+
+/* ── HEADER ── */
+header{background:var(--white);border-bottom:1px solid var(--border);padding:0 2rem;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:32px;height:32px;background:var(--blue);border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-size:1rem;font-weight:700}
+.logo-text{font-size:1rem;font-weight:700;color:var(--text);letter-spacing:-0.02em}
+.logo-sub{font-size:0.7rem;color:var(--muted);font-weight:400;margin-left:4px}
+.header-right{display:flex;align-items:center;gap:1rem}
+.badge{display:flex;align-items:center;gap:5px;font-size:0.7rem;color:var(--muted);background:var(--bg);border:1px solid var(--border);padding:4px 10px;border-radius:20px}
+.badge-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+.badge-dot.blue{background:var(--blue)}
+#clock{font-size:0.75rem;color:var(--muted);font-family:'IBM Plex Mono',monospace}
+
+/* ── MAIN ── */
+main{max-width:1400px;margin:0 auto;padding:1.5rem 2rem}
+
+/* ── SCANNER ── */
+.scanner-card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
+.scanner-label{font-size:0.7rem;font-weight:600;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.8rem}
+.target-row{display:flex;gap:0.6rem;flex-wrap:wrap}
+.target-input{flex:1;min-width:200px;background:var(--bg);border:1.5px solid var(--border2);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.85rem;padding:0.7rem 1rem;border-radius:8px;outline:none;transition:border-color 0.15s,box-shadow 0.15s}
+.target-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(0,102,255,0.1);background:var(--white)}
+.target-input::placeholder{color:var(--dim)}
+.btn{font-family:'IBM Plex Sans',sans-serif;font-size:0.8rem;font-weight:600;padding:0 1.2rem;height:42px;border-radius:8px;cursor:pointer;border:1.5px solid;transition:all 0.15s;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--blue);border-color:var(--blue);color:white}
+.btn-primary:hover{background:#0052cc;border-color:#0052cc;box-shadow:0 2px 8px rgba(0,102,255,0.3)}
+.btn-primary:disabled{opacity:0.6;cursor:not-allowed}
+.btn-secondary{background:var(--white);border-color:var(--border2);color:var(--text)}
+.btn-secondary:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-bg)}
+.btn-danger{background:var(--white);border-color:var(--border2);color:var(--muted)}
+.btn-danger:hover{border-color:var(--red);color:var(--red)}
+
+.progress-wrap{height:3px;background:var(--bg2);border-radius:2px;margin-top:1rem;display:none;overflow:hidden}
+.progress-bar{height:100%;width:30%;background:linear-gradient(90deg,var(--blue),var(--cyan));animation:slide 1.2s ease-in-out infinite;border-radius:2px}
+.scan-status{font-size:0.72rem;color:var(--muted);margin-top:0.6rem;min-height:16px;font-family:'IBM Plex Mono',monospace}
+
+/* ── TABS ── */
+.tabs{display:flex;border-bottom:2px solid var(--border);margin-bottom:1.5rem;gap:0;background:var(--white);border-radius:10px 10px 0 0;padding:0 1rem;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}
+.tab{font-size:0.75rem;font-weight:500;padding:0.8rem 1rem;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.15s;background:none;border-top:none;border-left:none;border-right:none;font-family:'IBM Plex Sans',sans-serif;display:flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap}
+.tab:hover{color:var(--blue)}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue);font-weight:600}
+.tab-badge{font-size:0.65rem;padding:1px 7px;border-radius:20px;background:var(--bg2);color:var(--muted);font-weight:600}
+.tab.active .tab-badge{background:var(--blue-bg);color:var(--blue)}
+.tab-content{display:none}.tab-content.active{display:block}
+
+/* ── HERMES AI PANEL ── */
+.hermes-panel{background:var(--white);border:1.5px solid var(--blue-border);border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;display:none;box-shadow:0 2px 8px rgba(0,102,255,0.06)}
+.hermes-panel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem}
+.hermes-title{display:flex;align-items:center;gap:8px;font-size:0.8rem;font-weight:700;color:var(--blue)}
+.hermes-model-badge{font-size:0.65rem;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border);padding:3px 10px;border-radius:20px;font-weight:600}
+.hermes-threat{font-size:0.82rem;color:var(--text);line-height:1.7;padding:1rem;background:var(--blue-bg);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;margin-bottom:1.2rem}
+.hermes-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+.hermes-section-label{font-size:0.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.6rem}
+.hermes-action{display:flex;gap:8px;margin-bottom:0.5rem;font-size:0.78rem;align-items:flex-start}
+.hermes-action-num{min-width:20px;height:20px;background:var(--blue);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.6rem;font-weight:700;flex-shrink:0;margin-top:1px}
+.hermes-code{background:#1a2332;border-radius:8px;padding:1rem;overflow-x:auto}
+.hermes-code pre{font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:#7dd3fc;line-height:1.8;white-space:pre-wrap;word-break:break-all}
+.hermes-skill{background:var(--purple-bg);border:1px solid var(--purple-border);border-radius:8px;padding:0.8rem 1rem;font-size:0.78rem;color:var(--purple);display:flex;gap:8px;align-items:flex-start}
+
+/* ── SUMMARY ── */
+.summary-grid{display:grid;grid-template-columns:220px 1fr;gap:1.5rem;margin-bottom:1.5rem}
+.score-card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:1.5rem;display:flex;flex-direction:column;align-items:center;gap:1rem;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
+.risk-label{font-size:0.65rem;font-weight:700;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;border:1px solid var(--border2);padding:4px 12px;border-radius:20px}
+.ring-wrap{position:relative;width:160px;height:160px}
+.ring-svg{transform:rotate(-90deg);width:160px;height:160px}
+.ring-bg{fill:none;stroke:var(--bg2);stroke-width:10}
+.ring-fill{fill:none;stroke:var(--blue);stroke-width:10;stroke-linecap:round;stroke-dasharray:440;stroke-dashoffset:440;transition:stroke-dashoffset 1.8s cubic-bezier(0.4,0,0.2,1),stroke 0.5s}
+.ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring-num{font-family:'IBM Plex Mono',monospace;font-size:2.5rem;font-weight:600;color:var(--text);line-height:1}
+.ring-denom{font-size:0.65rem;color:var(--muted)}
+.ring-grade{font-size:0.78rem;font-weight:700;color:var(--blue);text-align:center}
+.score-meta{font-size:0.68rem;color:var(--muted);text-align:center;line-height:1.9;font-family:'IBM Plex Mono',monospace}
+
+.vuln-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1rem}
+.vuln-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:1.2rem;box-shadow:0 1px 3px rgba(0,0,0,0.03);transition:box-shadow 0.15s}
+.vuln-card:hover{box-shadow:0 3px 10px rgba(0,0,0,0.08)}
+.vuln-card-label{font-size:0.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem;display:flex;align-items:center;gap:6px}
+.vuln-dot{width:8px;height:8px;border-radius:50%}
+.vuln-num{font-family:'IBM Plex Mono',monospace;font-size:2.2rem;font-weight:600;line-height:1;margin-bottom:0.3rem}
+.vuln-sub{font-size:0.68rem;color:var(--muted)}
+.vc-crit .vuln-dot{background:var(--red)}.vc-crit .vuln-num{color:var(--red)}
+.vc-high .vuln-dot{background:var(--orange)}.vc-high .vuln-num{color:var(--orange)}
+.vc-med  .vuln-dot{background:var(--yellow)}.vc-med  .vuln-num{color:var(--yellow)}
+.vc-low  .vuln-dot{background:var(--blue)}.vc-low  .vuln-num{color:var(--blue)}
+
+.info-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
+.info-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:1.2rem;box-shadow:0 1px 3px rgba(0,0,0,0.03)}
+.info-label{font-size:0.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem}
+.info-val{font-size:1.2rem;font-weight:700;color:var(--text);font-family:'IBM Plex Mono',monospace}
+.info-sub{font-size:0.68rem;color:var(--muted);margin-top:0.3rem}
+.info-sub.good{color:var(--green)}.info-sub.bad{color:var(--red)}.info-sub.warn{color:var(--yellow)}
+
+/* ── FINDINGS ── */
+.findings-toolbar{display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;align-items:center}
+.filter-chip{font-size:0.7rem;font-weight:600;padding:5px 12px;border-radius:20px;cursor:pointer;border:1.5px solid var(--border2);background:var(--white);color:var(--muted);transition:all 0.15s;font-family:'IBM Plex Sans',sans-serif}
+.filter-chip:hover{border-color:var(--blue);color:var(--blue)}
+.fc-active-all{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
+.fc-active-crit{border-color:var(--red);background:var(--red-bg);color:var(--red)}
+.fc-active-high{border-color:var(--orange);background:var(--orange-bg);color:var(--orange)}
+.fc-active-med{border-color:var(--yellow);background:var(--yellow-bg);color:var(--yellow)}
+.fc-active-low{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
+.fc-active-info{border-color:var(--purple);background:var(--purple-bg);color:var(--purple)}
+
+.finding-card{background:var(--white);border:1px solid var(--border);border-radius:10px;margin-bottom:0.5rem;overflow:hidden;transition:box-shadow 0.15s}
+.finding-card:hover{box-shadow:0 2px 8px rgba(0,0,0,0.08)}
+.finding-header{display:flex;align-items:center;gap:0.8rem;padding:0.9rem 1.2rem;cursor:pointer}
+.sev-badge{font-size:0.62rem;font-weight:700;padding:3px 8px;border-radius:4px;white-space:nowrap;letter-spacing:0.06em}
+.sb-critical{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+.sb-high{background:var(--orange-bg);color:var(--orange);border:1px solid var(--orange-border)}
+.sb-medium{background:var(--yellow-bg);color:var(--yellow);border:1px solid var(--yellow-border)}
+.sb-low{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border)}
+.sb-info{background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-border)}
+.sb-good{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.finding-title{font-size:0.82rem;font-weight:500;color:var(--text);flex:1}
+.finding-tags{display:flex;gap:0.4rem;align-items:center}
+.finding-tag{font-size:0.65rem;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:4px;border:1px solid var(--border)}
+.finding-cvss{font-size:0.65rem;color:var(--orange);font-weight:600;font-family:'IBM Plex Mono',monospace}
+.finding-chevron{color:var(--dim);font-size:0.7rem;transition:transform 0.2s;flex-shrink:0}
+.finding-card.open .finding-chevron{transform:rotate(180deg)}
+.finding-body{display:none;padding:0 1.2rem 1.2rem;border-top:1px solid var(--border)}
+.finding-card.open .finding-body{display:block}
+.finding-desc{font-size:0.78rem;color:var(--muted);line-height:1.7;margin:0.8rem 0}
+
+.cve-table{width:100%;border-collapse:collapse;font-size:0.72rem;margin-bottom:0.8rem}
+.cve-table th{text-align:left;padding:0.5rem 0.8rem;border-bottom:2px solid var(--border);font-size:0.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;background:var(--bg)}
+.cve-table td{padding:0.6rem 0.8rem;border-bottom:1px solid var(--border);color:var(--text)}
+.cve-table tr:hover td{background:var(--bg)}
+.cve-link{color:var(--blue);text-decoration:none;font-weight:500}.cve-link:hover{text-decoration:underline}
+
+/* SWE-AGENT FIX BOX */
+.swe-box{background:var(--bg);border:1px solid var(--border2);border-radius:8px;overflow:hidden;margin-top:0.8rem}
+.swe-header{display:flex;justify-content:space-between;align-items:center;padding:0.7rem 1rem;background:var(--white);border-bottom:1px solid var(--border)}
+.swe-label{font-size:0.68rem;font-weight:700;color:var(--blue);display:flex;align-items:center;gap:6px}
+.swe-btn{font-size:0.68rem;font-weight:600;padding:4px 10px;border-radius:6px;cursor:pointer;border:1px solid var(--blue-border);background:var(--blue-bg);color:var(--blue);font-family:'IBM Plex Sans',sans-serif;transition:all 0.15s}
+.swe-btn:hover{background:var(--blue);color:white}
+.swe-loading{padding:1rem;font-size:0.75rem;color:var(--muted);display:flex;align-items:center;gap:8px}
+.swe-result{padding:1rem}
+.swe-understanding{font-size:0.78rem;color:var(--text);line-height:1.6;margin-bottom:0.8rem;padding:0.7rem;background:var(--blue-bg);border-radius:6px}
+.swe-code-wrap{background:#1a2332;border-radius:6px;padding:1rem;margin-bottom:0.8rem}
+.swe-code-wrap pre{font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:#7dd3fc;line-height:1.8;white-space:pre-wrap;word-break:break-all}
+.swe-tests{font-size:0.72rem;color:var(--muted)}
+.swe-test-cmd{background:var(--bg2);border-radius:4px;padding:4px 8px;font-family:'IBM Plex Mono',monospace;margin-top:4px;font-size:0.68rem;color:var(--text)}
+.confidence-badge{display:inline-block;font-size:0.62rem;font-weight:700;padding:2px 8px;border-radius:4px}
+.conf-HIGH{background:var(--green-bg);color:var(--green)}
+.conf-MEDIUM{background:var(--yellow-bg);color:var(--yellow)}
+.conf-LOW{background:var(--red-bg);color:var(--red)}
+.copy-btn{font-size:0.65rem;cursor:pointer;background:none;border:none;color:var(--muted);font-family:'IBM Plex Sans',sans-serif}.copy-btn:hover{color:var(--blue)}
+
+/* ── TESTS ── */
+.tests-progress-bar{height:6px;background:var(--bg2);border-radius:3px;margin-bottom:1.5rem;overflow:hidden}
+.tests-progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan));border-radius:3px;width:0%;transition:width 1s ease}
+.tests-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:0.4rem}
+.test-row{display:flex;align-items:center;gap:0.7rem;background:var(--white);border:1px solid var(--border);border-radius:8px;padding:0.65rem 1rem;font-size:0.75rem;transition:box-shadow 0.15s}
+.test-row:hover{box-shadow:0 2px 6px rgba(0,0,0,0.06)}
+.test-icon{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.6rem;font-weight:700;flex-shrink:0}
+.ti-pass{background:var(--green-bg);color:var(--green)}
+.ti-fail{background:var(--red-bg);color:var(--red)}
+.ti-warn{background:var(--yellow-bg);color:var(--yellow)}
+.ti-info{background:var(--purple-bg);color:var(--purple)}
+.test-name{flex:1;color:var(--text)}
+.test-status{font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em}
+.ts-pass{color:var(--green)}.ts-fail{color:var(--red)}.ts-warn{color:var(--yellow)}.ts-info{color:var(--purple)}
+
+/* ── MULTI-SCAN ── */
+.multi-desc{font-size:0.78rem;color:var(--muted);margin-bottom:1rem;padding:0.8rem;background:var(--blue-bg);border:1px solid var(--blue-border);border-radius:8px}
+.multi-inputs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.6rem;margin-bottom:1rem}
+.multi-result-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+.multi-card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:1.2rem;min-height:200px;box-shadow:0 1px 4px rgba(0,0,0,0.04);transition:box-shadow 0.15s}
+.multi-card:hover{box-shadow:0 4px 12px rgba(0,0,0,0.1)}
+.mc-domain{font-size:0.78rem;font-weight:600;color:var(--text);margin-bottom:0.8rem;font-family:'IBM Plex Mono',monospace}
+.mc-score{font-family:'IBM Plex Mono',monospace;font-size:2.8rem;font-weight:600;line-height:1;margin-bottom:0.3rem}
+.mc-risk{font-size:0.72rem;font-weight:700;margin-bottom:0.8rem;text-transform:uppercase;letter-spacing:0.06em}
+.mc-bar{height:4px;background:var(--bg2);border-radius:2px;margin-bottom:0.8rem}
+.mc-bar-fill{height:100%;border-radius:2px;transition:width 1.5s ease}
+.mc-issue{font-size:0.7rem;color:var(--orange);margin-bottom:0.3rem;line-height:1.5}
+.mc-fix{font-size:0.7rem;color:var(--green);line-height:1.5}
+.mc-ports{font-size:0.68rem;color:var(--muted);margin-bottom:0.5rem;font-family:'IBM Plex Mono',monospace}
+.mc-scanning{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:0.75rem;margin-top:2rem;justify-content:center}
+
+/* ── ISSUE HUNTER TAB ── */
+.ih-layout{display:grid;grid-template-columns:340px 1fr;gap:1.5rem}
+.ih-panel{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:1.5rem;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
+.ih-title{font-size:0.85rem;font-weight:700;color:var(--text);margin-bottom:1.2rem;display:flex;align-items:center;gap:8px}
+.ih-status-bar{display:flex;align-items:center;gap:10px;padding:0.8rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:0.75rem;font-weight:600;border:1px solid}
+.ih-sb-idle{background:var(--bg2);border-color:var(--border2);color:var(--muted)}
+.ih-sb-running{background:var(--green-bg);border-color:var(--green-border);color:var(--green)}
+.ih-sb-stopping{background:var(--yellow-bg);border-color:var(--yellow-border);color:var(--yellow)}
+.ih-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.ih-dot-idle{background:var(--dim)}
+.ih-dot-running{background:var(--green);animation:pulse 1.5s infinite}
+.ih-stats{display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;margin-bottom:1.2rem}
+.ih-stat{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:0.8rem;text-align:center}
+.ih-stat-num{font-family:'IBM Plex Mono',monospace;font-size:1.8rem;font-weight:600;color:var(--text);line-height:1}
+.ih-stat-lbl{font-size:0.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-top:0.2rem}
+.ih-log{background:#1a2332;border-radius:8px;height:180px;overflow-y:auto;padding:0.8rem;font-family:'IBM Plex Mono',monospace;font-size:0.66rem;line-height:1.9}
+.ih-log-line{display:flex;gap:8px}
+.ih-log-t{color:#475569;flex-shrink:0}
+.ih-log-init{color:#7dd3fc}.ih-log-ok{color:#86efac}.ih-log-warn{color:#fde047}.ih-log-error{color:#fca5a5}.ih-log-info{color:#c4b5fd}
+.ih-pr-list{display:flex;flex-direction:column;gap:0.6rem;max-height:520px;overflow-y:auto}
+.ih-pr-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:1.2rem;box-shadow:0 1px 3px rgba(0,0,0,0.03);transition:box-shadow 0.15s}
+.ih-pr-card:hover{box-shadow:0 3px 10px rgba(0,0,0,0.08)}
+.ih-pr-top{display:flex;align-items:flex-start;gap:0.8rem;margin-bottom:0.7rem}
+.ih-pr-num{font-size:0.65rem;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--border2);border-radius:4px;padding:2px 7px;white-space:nowrap;font-family:'IBM Plex Mono',monospace}
+.ih-pr-title{font-size:0.8rem;font-weight:600;color:var(--text);flex:1;line-height:1.4}
+.ih-ci-pass{display:inline-flex;align-items:center;gap:4px;font-size:0.62rem;font-weight:700;padding:2px 8px;border-radius:4px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.ih-ci-fail{display:inline-flex;align-items:center;gap:4px;font-size:0.62rem;font-weight:700;padding:2px 8px;border-radius:4px;background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+.ih-pr-meta{display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.6rem}
+.ih-tag{font-size:0.62rem;padding:2px 8px;border-radius:4px;background:var(--bg2);color:var(--muted);border:1px solid var(--border)}
+.ih-pr-understood{font-size:0.75rem;color:var(--muted);line-height:1.6;margin-bottom:0.6rem}
+.ih-pr-branch{font-size:0.65rem;font-family:'IBM Plex Mono',monospace;color:var(--blue);background:var(--blue-bg);border:1px solid var(--blue-border);padding:3px 8px;border-radius:4px;display:inline-block}
+.ih-pr-toggle{font-size:0.68rem;cursor:pointer;color:var(--muted);margin-top:0.6rem;background:none;border:none;font-family:'IBM Plex Sans',sans-serif;padding:0}
+.ih-pr-toggle:hover{color:var(--blue)}
+.ih-pr-code{display:none;background:#1a2332;border-radius:6px;padding:0.8rem;margin-top:0.6rem}
+.ih-pr-code pre{font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:#7dd3fc;line-height:1.8;white-space:pre-wrap;word-break:break-all}
+.ih-one-shot{background:var(--white);border:1px solid var(--border2);border-radius:12px;padding:1.5rem;margin-bottom:1rem}
+.ih-one-shot-title{font-size:0.78rem;font-weight:700;color:var(--text);margin-bottom:1rem;display:flex;align-items:center;gap:6px}
+.ih-os-result{margin-top:1rem;display:none}
+
+/* ── SCHEDULE TAB ── */
+.schedule-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+.schedule-form{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:1.5rem;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
+.schedule-title{font-size:0.85rem;font-weight:700;color:var(--text);margin-bottom:1.2rem;display:flex;align-items:center;gap:8px}
+.form-group{margin-bottom:1rem}
+.form-label{font-size:0.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.4rem;display:block}
+.form-input{width:100%;background:var(--bg);border:1.5px solid var(--border2);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.82rem;padding:0.6rem 0.8rem;border-radius:8px;outline:none;transition:border-color 0.15s}
+.form-input:focus{border-color:var(--blue);background:var(--white)}
+.schedule-result{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:1.5rem}
+.skills-list{display:flex;flex-direction:column;gap:0.5rem;max-height:300px;overflow-y:auto}
+.skill-item{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:0.8rem 1rem}
+.skill-domain{font-size:0.7rem;font-weight:600;color:var(--blue);font-family:'IBM Plex Mono',monospace;margin-bottom:0.3rem}
+.skill-text{font-size:0.75rem;color:var(--text);line-height:1.5}
+.skill-meta{font-size:0.65rem;color:var(--muted);margin-top:0.3rem}
+
+/* ── LOG ── */
+.log-wrap{background:var(--white);border:1px solid var(--border);border-radius:12px;margin-top:1.5rem;box-shadow:0 1px 4px rgba(0,0,0,0.04);position:relative}
+.log-wrap::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,var(--blue) 0%,var(--cyan) 50%,var(--green) 100%);border-radius:12px 0 0 12px;z-index:1}
+.log-header{display:flex;justify-content:space-between;align-items:center;padding:0.7rem 1.2rem 0.7rem 1.4rem;border-bottom:1px solid var(--border);background:var(--bg);border-radius:12px 12px 0 0}
+.log-title{font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.12em;display:flex;align-items:center;gap:6px}
+.log-title::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 2s infinite}
+.log-count{font-size:0.65rem;font-weight:600;background:var(--blue-bg);color:var(--blue);padding:2px 10px;border-radius:20px;border:1px solid var(--blue-border)}
+.log-body{max-height:220px;overflow-y:auto;padding:0.5rem 0.8rem 0.5rem 1.4rem;font-family:'IBM Plex Mono',monospace;display:flex;flex-direction:column;gap:0}
+.log-body::-webkit-scrollbar{width:3px}.log-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.log-line{display:flex;align-items:baseline;gap:0.7rem;font-size:0.67rem;padding:2.5px 4px;border-radius:3px;border-bottom:1px solid transparent;transition:background 0.1s}
+.log-line:hover{background:var(--bg);border-bottom-color:var(--border)}
+.log-time{color:var(--dim);min-width:70px;white-space:nowrap}
+.log-type{font-size:0.54rem;padding:1px 6px;border-radius:3px;font-weight:700;letter-spacing:0.06em;white-space:nowrap}
+.lt-init{background:var(--green-bg);color:var(--green)}
+.lt-info{background:var(--blue-bg);color:var(--blue)}
+.lt-ok{background:var(--green-bg);color:var(--green)}
+.lt-warn{background:var(--yellow-bg);color:var(--yellow)}
+.lt-err{background:var(--red-bg);color:var(--red)}
+.lt-sys{background:var(--purple-bg);color:var(--purple)}
+.log-msg{color:var(--muted);flex:1}
+
+/* ── FOOTER ── */
+footer{text-align:center;padding:1.5rem;font-size:0.68rem;color:var(--dim);border-top:1px solid var(--border);margin-top:2rem;background:var(--white)}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:2rem;right:2rem;z-index:9999;background:var(--white);border:1.5px solid var(--blue-border);color:var(--text);font-size:0.78rem;padding:0.8rem 1.2rem;border-radius:10px;animation:slideUp 0.3s ease;box-shadow:0 4px 20px rgba(0,0,0,0.12);font-weight:500}
+.toast.err{border-color:var(--red-border);color:var(--red)}
+.toast.ok{border-color:var(--green-border);color:var(--green)}
+.toast.warn{border-color:var(--yellow-border);color:var(--yellow)}
+
+/* ── EMPTY STATE ── */
+.empty{text-align:center;padding:3rem;color:var(--dim);font-size:0.78rem}
+.empty-icon{font-size:2rem;margin-bottom:0.5rem;opacity:0.4}
+
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+@keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(400%)}}
+@keyframes slideUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.spin{animation:spin 1s linear infinite;display:inline-block}
+
+/* ── DOMAIN INTEL ── */
+.di-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem}
+.di-card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:1.5rem;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
+.di-title{font-size:0.85rem;font-weight:700;color:var(--text);margin-bottom:1rem;display:flex;align-items:center;gap:8px}
+.di-sub-list{display:flex;flex-direction:column;gap:4px;max-height:220px;overflow-y:auto}
+.di-sub-item{font-family:'IBM Plex Mono',monospace;font-size:0.72rem;padding:5px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--blue);cursor:pointer;transition:all 0.15s}
+.di-sub-item:hover{border-color:var(--blue);background:var(--blue-bg)}
+.di-dns-table{width:100%;border-collapse:collapse;font-size:0.72rem}
+.di-dns-table td{padding:5px 8px;border-bottom:1px solid var(--border);font-family:'IBM Plex Mono',monospace}
+.di-dns-table td:first-child{font-weight:700;color:var(--blue);width:60px}
+.di-dns-table td:last-child{color:var(--text);word-break:break-all}
+.di-ssl-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.6rem}
+.di-ssl-item{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:0.8rem}
+.di-ssl-label{font-size:0.62rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.3rem}
+.di-ssl-val{font-size:0.78rem;font-weight:600;color:var(--text);font-family:'IBM Plex Mono',monospace;word-break:break-all}
+.di-ai-box{background:var(--blue-bg);border:1.5px solid var(--blue-border);border-radius:10px;padding:1rem;margin-top:1rem}
+.di-ai-findings{margin-top:0.6rem;display:flex;flex-direction:column;gap:4px}
+.di-ai-finding{font-size:0.75rem;color:var(--text);padding:4px 8px;background:var(--white);border-radius:4px;border:1px solid var(--border)}
+.di-risk-badge{display:inline-block;font-size:0.65rem;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:0.06em}
+.di-risk-LOW{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.di-risk-MEDIUM{background:var(--yellow-bg);color:var(--yellow);border:1px solid var(--yellow-border)}
+.di-risk-HIGH{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+.di-scan-row{display:flex;gap:0.6rem;margin-bottom:1rem;align-items:center}
+/* ── ARXIV ── */
+.arxiv-paper{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:1.2rem;margin-bottom:0.6rem;transition:box-shadow 0.15s}
+.arxiv-paper:hover{box-shadow:0 3px 10px rgba(0,0,0,0.08)}
+.arxiv-title{font-size:0.82rem;font-weight:600;color:var(--blue);margin-bottom:0.4rem;line-height:1.5}
+.arxiv-title a{color:var(--blue);text-decoration:none}.arxiv-title a:hover{text-decoration:underline}
+.arxiv-meta{display:flex;gap:0.6rem;margin-bottom:0.5rem;flex-wrap:wrap}
+.arxiv-tag{font-size:0.62rem;padding:2px 8px;border-radius:4px;background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-border)}
+.arxiv-summary{font-size:0.75rem;color:var(--muted);line-height:1.7;margin-bottom:0.6rem}
+.arxiv-ai{background:var(--blue-bg);border-left:3px solid var(--blue);padding:0.6rem 0.8rem;font-size:0.75rem;color:var(--text);line-height:1.6;border-radius:0 6px 6px 0;margin-top:0.5rem}
+.arxiv-search-row{display:flex;gap:0.6rem;margin-bottom:1.5rem}
+/* ── inline arxiv button in findings ── */
+.arxiv-btn{font-size:0.62rem;font-weight:600;padding:3px 8px;border-radius:5px;cursor:pointer;border:1px solid var(--purple-border);background:var(--purple-bg);color:var(--purple);font-family:'IBM Plex Sans',sans-serif;transition:all 0.15s;margin-left:6px}
+.arxiv-btn:hover{background:var(--purple);color:white}
+.arxiv-inline-result{margin-top:0.8rem;display:none;padding:0.8rem;background:var(--purple-bg);border:1px solid var(--purple-border);border-radius:8px}
+/* ── DIAGRAM ── */
+.diagram-canvas{width:100%;min-height:520px;background:var(--white);border:1px solid var(--border);border-radius:12px;overflow:hidden;position:relative}
+.diagram-canvas svg{width:100%;height:100%}
+.diagram-desc{background:var(--blue-bg);border:1px solid var(--blue-border);border-radius:10px;padding:1rem;margin-bottom:1.2rem;font-size:0.8rem;color:var(--text);line-height:1.7}
+.diagram-toolbar{display:flex;gap:0.6rem;margin-bottom:1rem;align-items:center;flex-wrap:wrap}
+
+/* ── RECON LAB ── */
+.rl-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin-bottom:1.2rem}
+.rl-full{grid-column:span 2}
+.rl-card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:1.2rem;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
+.rl-card-title{font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:1rem;display:flex;align-items:center;gap:6px}
+.rl-row{display:flex;align-items:flex-start;gap:0.6rem;margin-bottom:0.5rem;font-size:0.78rem}
+.rl-label{min-width:110px;font-size:0.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;padding-top:2px}
+.rl-val{color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.75rem;line-height:1.5;word-break:break-all}
+.rl-badge{display:inline-block;font-size:0.62rem;font-weight:700;padding:2px 8px;border-radius:4px;letter-spacing:0.04em}
+.rl-badge-ok{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.rl-badge-warn{background:var(--yellow-bg);color:var(--yellow);border:1px solid var(--yellow-border)}
+.rl-badge-err{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+.rl-badge-info{background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-border)}
+.rl-badge-blue{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border)}
+.rl-tech-grid{display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.3rem}
+.rl-tech-chip{font-size:0.65rem;padding:3px 9px;border-radius:20px;background:var(--bg2);color:var(--text);border:1px solid var(--border);font-weight:500}
+.rl-threat-box{background:var(--blue-bg);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:0.8rem 1rem;font-size:0.78rem;color:var(--text);line-height:1.7;margin-bottom:0.8rem}
+.rl-threat-box.warn{background:var(--yellow-bg);border-left-color:var(--yellow)}
+.rl-threat-box.err{background:var(--red-bg);border-left-color:var(--red)}
+.rl-rec-item{display:flex;gap:8px;align-items:flex-start;padding:0.5rem 0.7rem;background:var(--bg);border:1px solid var(--border);border-radius:6px;margin-bottom:0.4rem;font-size:0.75rem;color:var(--text);line-height:1.5}
+.rl-rec-num{min-width:20px;height:20px;background:var(--blue);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.6rem;font-weight:700;flex-shrink:0;margin-top:1px}
+.rl-stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:0.8rem;margin-bottom:1rem}
+.rl-stat{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:0.8rem;text-align:center}
+.rl-stat-num{font-family:'IBM Plex Mono',monospace;font-size:1.6rem;font-weight:700;color:var(--blue);line-height:1}
+.rl-stat-lbl{font-size:0.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-top:0.3rem}
+.rl-ssl-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.6rem;margin-top:0.4rem}
+.rl-ssl-item{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:0.6rem}
+.rl-ssl-lbl{font-size:0.6rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem}
+.rl-ssl-val{font-size:0.72rem;font-weight:600;color:var(--text);font-family:'IBM Plex Mono',monospace;word-break:break-all}
+.rl-sub-list{display:flex;flex-direction:column;gap:3px;max-height:180px;overflow-y:auto;margin-top:0.4rem}
+.rl-sub-item{font-family:'IBM Plex Mono',monospace;font-size:0.7rem;padding:4px 9px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--blue);cursor:pointer;transition:all 0.1s}
+.rl-sub-item:hover{border-color:var(--blue);background:var(--blue-bg)}
+.rl-dns-table{width:100%;border-collapse:collapse;font-size:0.7rem;margin-top:0.4rem}
+.rl-dns-table td{padding:4px 8px;border-bottom:1px solid var(--border);font-family:'IBM Plex Mono',monospace}
+.rl-dns-table td:first-child{font-weight:700;color:var(--blue);width:50px}
+.rl-loading{display:none;font-size:0.75rem;color:var(--muted);padding:1rem;align-items:center;gap:8px}
+.rl-hermes-box{background:var(--blue-bg);border:1.5px solid var(--blue-border);border-radius:10px;padding:1rem;margin-top:0.8rem}
+.rl-hermes-title{font-size:0.7rem;font-weight:700;color:var(--blue);margin-bottom:0.6rem;display:flex;align-items:center;gap:6px}
+.rl-search-row{display:flex;gap:0.6rem;margin-bottom:1rem;align-items:center;flex-wrap:wrap}
+.rl-history{margin-top:1rem}
+.rl-history-item{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:0.6rem 1rem;margin-bottom:0.4rem;font-size:0.73rem;display:flex;align-items:center;gap:0.8rem;cursor:pointer;transition:all 0.15s}
+.rl-history-item:hover{border-color:var(--blue);background:var(--blue-bg)}
+.rl-score-pill{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;font-weight:700;padding:2px 8px;border-radius:10px}
+.rl-empty{text-align:center;padding:2rem;color:var(--muted);font-size:0.8rem}
+@media(max-width:768px){.rl-grid{grid-template-columns:1fr}.rl-full{grid-column:span 1}.rl-stat-row{grid-template-columns:repeat(2,1fr)}.rl-ssl-row{grid-template-columns:1fr 1fr}}
+/* ── WALLET GUARD ── */
+.wg-input-row{display:flex;gap:0.6rem;margin-bottom:1.2rem;flex-wrap:wrap}
+.wg-grid{display:grid;grid-template-columns:280px 1fr;gap:1.2rem;margin-bottom:1.2rem}
+.wg-card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:1.2rem;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
+.wg-card-title{font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:1rem;display:flex;align-items:center;gap:6px}
+.wg-score-wrap{display:flex;flex-direction:column;align-items:center;gap:0.8rem;padding:0.5rem 0}
+.wg-score-ring{position:relative;width:130px;height:130px}
+.wg-ring-svg{transform:rotate(-90deg);width:130px;height:130px}
+.wg-ring-bg{fill:none;stroke:var(--bg2);stroke-width:10}
+.wg-ring-fill{fill:none;stroke:var(--blue);stroke-width:10;stroke-linecap:round;stroke-dasharray:345;stroke-dashoffset:345;transition:stroke-dashoffset 1.5s ease,stroke 0.5s}
+.wg-score-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.wg-score-num{font-family:'IBM Plex Mono',monospace;font-size:2rem;font-weight:700;line-height:1}
+.wg-score-denom{font-size:0.6rem;color:var(--muted)}
+.wg-risk-badge{font-size:0.72rem;font-weight:700;padding:4px 14px;border-radius:20px;letter-spacing:0.06em}
+.wg-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;margin-bottom:1rem}
+.wg-stat{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:0.7rem;text-align:center}
+.wg-stat-num{font-family:'IBM Plex Mono',monospace;font-size:1.3rem;font-weight:700;color:var(--blue)}
+.wg-stat-lbl{font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-top:0.2rem}
+.wg-ai-box{background:var(--blue-bg);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:0.8rem 1rem;font-size:0.78rem;color:var(--text);line-height:1.7;margin-bottom:0.8rem}
+.wg-ai-box.warn{background:var(--yellow-bg);border-left-color:var(--yellow)}
+.wg-ai-box.danger{background:var(--red-bg);border-left-color:var(--red)}
+.wg-flag{display:flex;align-items:flex-start;gap:8px;padding:0.6rem 0.8rem;border-radius:8px;margin-bottom:0.4rem;font-size:0.75rem;border:1px solid}
+.wg-flag-ok{background:var(--green-bg);border-color:var(--green-border);color:var(--green)}
+.wg-flag-warn{background:var(--yellow-bg);border-color:var(--yellow-border);color:#7a5a00}
+.wg-flag-danger{background:var(--red-bg);border-color:var(--red-border);color:var(--red)}
+.wg-flag-info{background:var(--purple-bg);border-color:var(--purple-border);color:var(--purple)}
+.wg-tx-table{width:100%;border-collapse:collapse;font-size:0.7rem}
+.wg-tx-table th{text-align:left;padding:0.5rem 0.8rem;border-bottom:2px solid var(--border);font-size:0.62rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;background:var(--bg)}
+.wg-tx-table td{padding:0.55rem 0.8rem;border-bottom:1px solid var(--border);font-family:'IBM Plex Mono',monospace;font-size:0.68rem}
+.wg-tx-table tr:hover td{background:var(--bg)}
+.wg-tx-in{color:var(--green);font-weight:700}
+.wg-tx-out{color:var(--red);font-weight:700}
+.wg-token-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0.6rem}
+.wg-token-card{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:0.8rem;transition:box-shadow 0.15s}
+.wg-token-card:hover{box-shadow:0 2px 8px rgba(0,0,0,0.08)}
+.wg-token-sym{font-size:0.78rem;font-weight:700;color:var(--text);font-family:'IBM Plex Mono',monospace}
+.wg-token-name{font-size:0.65rem;color:var(--muted);margin-top:2px}
+.wg-token-bal{font-size:1rem;font-weight:700;color:var(--blue);font-family:'IBM Plex Mono',monospace;margin-top:0.4rem}
+.wg-token-usd{font-size:0.65rem;color:var(--muted)}
+.wg-check-list{display:flex;flex-direction:column;gap:0.4rem}
+.wg-check-row{display:flex;align-items:center;gap:0.6rem;padding:0.5rem 0.8rem;border-radius:7px;background:var(--bg);border:1px solid var(--border);font-size:0.75rem}
+.wg-check-icon{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.6rem;font-weight:700;flex-shrink:0}
+.wg-ci-ok{background:var(--green-bg);color:var(--green)}
+.wg-ci-warn{background:var(--yellow-bg);color:var(--yellow)}
+.wg-ci-fail{background:var(--red-bg);color:var(--red)}
+.wg-ci-info{background:var(--purple-bg);color:var(--purple)}
+.wg-addr{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--muted);word-break:break-all;padding:0.5rem;background:var(--bg);border-radius:6px;border:1px solid var(--border);margin-bottom:0.8rem}
+.wg-full{grid-column:span 2}
+.wg-tabs{display:flex;gap:0.4rem;margin-bottom:1rem;flex-wrap:wrap}
+.wg-tab{font-size:0.72rem;font-weight:600;padding:5px 12px;border-radius:6px;cursor:pointer;border:1.5px solid var(--border2);background:var(--white);color:var(--muted);transition:all 0.15s;font-family:'IBM Plex Sans',sans-serif}
+.wg-tab.active{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
+.wg-section{display:none}.wg-section.active{display:block}
+.wg-loading{display:none;font-size:0.75rem;color:var(--muted);padding:1rem;align-items:center;gap:8px}
+@media(max-width:768px){.wg-grid{grid-template-columns:1fr!important}.wg-full{grid-column:span 1}.wg-token-grid{grid-template-columns:repeat(2,1fr)!important}}
+@media(max-width:768px){
+  /* ── HEADER ── */
+  header{padding:0.5rem 0.8rem;height:auto;flex-wrap:wrap;gap:0.4rem}
+  .header-right{gap:0.3rem;flex-wrap:wrap}
+  .badge{font-size:0.6rem;padding:3px 7px}
+  .badge:nth-child(n+3){display:none}
+  .logo-sub{display:none}
+  #clock{display:none}
+  /* ── BANNER ── */
+  body>div:first-child{font-size:0.7rem;padding:5px 10px;line-height:1.4}
+  /* ── MAIN ── */
+  main{padding:0.6rem 0.8rem}
+  /* ── SCANNER ── */
+  .scanner-card{padding:0.8rem}
+  .target-row{display:flex;flex-direction:column;gap:0.5rem}
+  .target-input{width:100%;min-width:unset}
+  .btn{width:100%;justify-content:center;height:40px}
+  .scan-status{font-size:0.65rem}
+  /* ── TABS ── */
+  .tabs{padding:0 0.3rem;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tab{font-size:0.65rem;padding:0.5rem 0.6rem;flex-shrink:0;white-space:nowrap}
+  /* ── SUMMARY GRID ── */
+  .summary-grid{grid-template-columns:1fr!important;gap:0.8rem}
+  .score-card{flex-direction:row;padding:1rem;gap:1rem;align-items:center;justify-content:flex-start}
+  .ring-wrap{width:90px;height:90px;flex-shrink:0}
+  .ring-svg{width:90px;height:90px}
+  .ring-num{font-size:1.6rem}
+  .ring-denom{font-size:0.6rem}
+  .ring-grade{font-size:0.7rem}
+  .score-meta{font-size:0.6rem;text-align:left}
+  .risk-label{font-size:0.6rem}
+  /* ── VULN + INFO GRID ── */
+  .vuln-grid{grid-template-columns:repeat(2,1fr)!important;gap:0.5rem}
+  .info-row{grid-template-columns:repeat(2,1fr)!important;gap:0.5rem}
+  .vuln-card{padding:0.7rem}
+  .vuln-num{font-size:1.6rem}
+  .info-card{padding:0.7rem}
+  .info-val{font-size:1rem}
+  /* ── FINDINGS ── */
+  .finding-header{flex-wrap:wrap;gap:0.4rem}
+  .finding-tags{display:none}
+  .findings-toolbar{gap:0.4rem}
+  .filter-chip{font-size:0.65rem;padding:4px 8px}
+  /* ── HERMES PANEL ── */
+  .hermes-panel{padding:0.8rem}
+  .hermes-grid{grid-template-columns:1fr!important}
+  /* ── TESTS ── */
+  .tests-grid{grid-template-columns:1fr!important}
+  /* ── LOG ── */
+  .log-body{max-height:160px}
+  .log-line{font-size:0.61rem}
+  .log-time{min-width:48px;font-size:0.58rem}
+  /* ── OTHER GRIDS ── */
+  .ih-layout{grid-template-columns:1fr!important}
+  .di-grid{grid-template-columns:1fr!important}
+  .multi-inputs,.multi-result-grid{grid-template-columns:1fr!important}
+  .schedule-grid{grid-template-columns:1fr!important}
+  /* ── OVERFLOW ── */
+  body{overflow-x:hidden}
+  pre,code{overflow-x:auto;white-space:pre-wrap;word-break:break-all}
+}
+</style>
+</head>
+<body>
+<div style="background:#ff9800;color:#000;text-align:center;padding:8px 16px;font-family:monospace;font-size:0.8rem;font-weight:bold;">
+⚡ Due to API load, scans may be slow or return errors — please retry if this happens.
+</div>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">H</div>
+    <div>
+      <div style="display:flex;align-items:baseline;gap:6px">
+        <span class="logo-text">Hermes Security</span>
+        <span class="logo-sub">Autonomous Vulnerability Scanner</span>
+      </div>
+    </div>
+  </div>
+  <div class="header-right">    <div class="badge"><span class="badge-dot"></span>Agent Ready</div>
+    <div class="badge"><span class="badge-dot blue"></span>Hermes-4-405B</div>
+    <div class="badge">Nous Research Hackathon 2025</div>
+    <div id="clock">00:00:00</div>
+  </div>
+</header>
+
+<main>
+  <!-- SCANNER -->
+  <div class="scanner-card">
+    <div class="scanner-label">Target — Enter URL or Domain</div>
+    <div class="target-row">
+      <input class="target-input" id="targetInput" type="text" placeholder="example.com or https://example.com">
+      <button class="btn btn-primary" id="scanBtn" onclick="startScan()">▶ Launch Scan</button>
+      <button class="btn btn-secondary" onclick="exportPDF()">↓ PDF Report</button>
+      <button class="btn btn-secondary" onclick="manualTelegram()">✈ Telegram</button>
+    </div>
+    <div class="progress-wrap" id="progressWrap"><div class="progress-bar"></div></div>
+    <div class="scan-status" id="scanStatus">Ready — Enter a target domain and launch scan</div>
+  </div>
+
+  <!-- HERMES AI PANEL -->
+  <div class="hermes-panel" id="hermesPanel">
+    <div class="hermes-panel-header">
+      <div class="hermes-title">⚕ Hermes-4-405B AI Analysis</div>
+      <div class="hermes-model-badge">Powered by Nous Research</div>
+    </div>
+    <div class="hermes-threat" id="hermesThreats">Analyzing...</div>
+    <div class="hermes-grid">
+      <div>
+        <div class="hermes-section-label">Critical Actions</div>
+        <div id="hermesActions"></div>
+      </div>
+      <div>
+        <div class="hermes-section-label">Auto-Fix Commands</div>
+        <div class="hermes-code"><pre id="hermesAutoFix"></pre></div>
+      </div>
+    </div>
+    <div class="hermes-skill">
+      <span>🧠</span>
+      <div><strong>Memory Saved —</strong> <span id="hermesSkill"></span></div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('summary',this)">Summary</button>
+    <button class="tab" onclick="switchTab('findings',this)">Findings <span class="tab-badge" id="findingsCount">0</span></button>
+    <button class="tab" onclick="switchTab('tests',this)">Performed Tests <span class="tab-badge" id="testsCount">0/38</span></button>
+    <button class="tab" onclick="switchTab('multiscan',this)">Multi-Scan</button>
+    <button class="tab" onclick="switchTab('schedule',this)">Schedule & Skills</button>
+    <button class="tab" onclick="switchTab('issuehunter',this)">🤖 Issue Hunter <span class="tab-badge" id="ihBadge">IDLE</span></button>
+    <button class="tab" onclick="switchTab('arxiv',this)">📄 ArXiv Research</button>
+    <button class="tab" onclick="switchTab('diagram',this)">🗺 Diagram</button>
+    <button class="tab" onclick="switchTab('reconlab',this)">🧬 Recon Lab</button>
+    <button class="tab" onclick="switchTab('walletguard',this)">🛡 Wallet Guard</button>
+  </div>
+
+  <!-- SUMMARY -->
+  <div class="tab-content active" id="tab-summary">
+    <div class="summary-grid">
+      <div class="score-card">
+        <div class="risk-label">Overall Risk Level</div>
+        <div class="ring-wrap">
+          <svg class="ring-svg" viewBox="0 0 160 160">
+            <circle class="ring-bg" cx="80" cy="80" r="70"/>
+            <circle class="ring-fill" id="ringFill" cx="80" cy="80" r="70"/>
+          </svg>
+          <div class="ring-center">
+            <div class="ring-num" id="scoreNum">--</div>
+            <div class="ring-denom">/100</div>
+          </div>
+        </div>
+        <div class="ring-grade" id="scoreGrade">Awaiting Scan</div>
+        <div class="score-meta" id="scoreMeta">Start: —<br>Finish: —<br>Duration: —<br>Tests: —</div>
+      </div>
+      <div>
+        <div class="vuln-grid">
+          <div class="vuln-card vc-crit"><div class="vuln-card-label"><span class="vuln-dot"></span>Critical</div><div class="vuln-num" id="critNum">0</div><div class="vuln-sub" id="critSub">—</div></div>
+          <div class="vuln-card vc-high"><div class="vuln-card-label"><span class="vuln-dot"></span>High</div><div class="vuln-num" id="highNum">0</div><div class="vuln-sub" id="highSub">—</div></div>
+          <div class="vuln-card vc-med"><div class="vuln-card-label"><span class="vuln-dot"></span>Medium</div><div class="vuln-num" id="medNum">0</div><div class="vuln-sub" id="medSub">—</div></div>
+          <div class="vuln-card vc-low"><div class="vuln-card-label"><span class="vuln-dot"></span>Low</div><div class="vuln-num" id="lowNum">0</div><div class="vuln-sub" id="lowSub">—</div></div>
+        </div>
+        <div class="info-row">
+          <div class="info-card"><div class="info-label">SSL Status</div><div class="info-val" id="sslVal">—</div><div class="info-sub" id="sslSub">Not scanned</div></div>
+          <div class="info-card"><div class="info-label">HTTP Headers</div><div class="info-val" id="headersVal">—</div><div class="info-sub" id="headersSub">Not scanned</div></div>
+          <div class="info-card"><div class="info-label">Open Ports</div><div class="info-val" id="portsVal">—</div><div class="info-sub" id="portsSub">Not scanned</div></div>
+          <div class="info-card"><div class="info-label">Scan Time</div><div class="info-val" id="scanTimeVal">—</div><div class="info-sub" id="scanTimeSub">Idle</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FINDINGS -->
+  <div class="tab-content" id="tab-findings">
+    <div class="findings-toolbar">
+      <button class="filter-chip fc-active-all" onclick="filterFindings('all',this)">All (<span id="fc-all">0</span>)</button>
+      <button class="filter-chip" onclick="filterFindings('critical',this)">Critical (<span id="fc-crit">0</span>)</button>
+      <button class="filter-chip" onclick="filterFindings('high',this)">High (<span id="fc-high">0</span>)</button>
+      <button class="filter-chip" onclick="filterFindings('medium',this)">Medium (<span id="fc-med">0</span>)</button>
+      <button class="filter-chip" onclick="filterFindings('low',this)">Low (<span id="fc-low">0</span>)</button>
+      <button class="filter-chip" onclick="filterFindings('info',this)">Info (<span id="fc-info">0</span>)</button>
+    </div>
+    <div id="findingsList"><div class="empty"><div class="empty-icon">🔍</div>Run a scan to see findings</div></div>
+  </div>
+
+  <!-- TESTS -->
+  <div class="tab-content" id="tab-tests">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+      <div style="font-size:0.75rem;font-weight:600;color:var(--text)" id="testsProgressLabel">0 / 38 tests performed</div>
+    </div>
+    <div class="tests-progress-bar"><div class="tests-progress-fill" id="testsBar"></div></div>
+    <div class="tests-grid" id="testsGrid"><div class="empty" style="grid-column:span 2"><div class="empty-icon">🧪</div>Run a scan to see test results</div></div>
+  </div>
+
+  <!-- MULTI-SCAN -->
+  <div class="tab-content" id="tab-multiscan">
+    <div class="multi-desc">⚡ <strong>delegate_task</strong> — Hermes-4-405B spawns parallel security agents to simultaneously scan multiple targets. Each agent runs real nmap scans and AI analysis.</div>
+    <div class="multi-inputs">
+      <input class="target-input" id="t1" placeholder="Target 1: example.com">
+      <input class="target-input" id="t2" placeholder="Target 2: example.org">
+      <input class="target-input" id="t3" placeholder="Target 3: example.net">
+    </div>
+    <button class="btn btn-primary" style="margin-bottom:1.5rem" onclick="startMultiScan()">⚡ Launch Parallel Scan</button>
+    <div class="multi-result-grid">
+      <div class="multi-card" id="mc1"><div class="mc-scanning"><span class="spin">⟳</span>Awaiting target...</div></div>
+      <div class="multi-card" id="mc2"><div class="mc-scanning"><span class="spin">⟳</span>Awaiting target...</div></div>
+      <div class="multi-card" id="mc3"><div class="mc-scanning"><span class="spin">⟳</span>Awaiting target...</div></div>
+    </div>
+  </div>
+
+  <!-- SCHEDULE & SKILLS -->
+  <div class="tab-content" id="tab-schedule">
+    <div style="display:flex;justify-content:center;align-items:flex-start;padding:1rem 0">
+      <div style="width:100%;max-width:520px">
+        <div class="schedule-form">
+          <div class="schedule-title">⏰ Schedule Nightly Scan</div>
+          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:1.2rem;line-height:1.6">Hermes <strong>schedule_cronjob</strong> — automatically scans your domain every night at 02:00 UTC and sends a Telegram report.</div>
+          <div class="form-group">
+            <label class="form-label">Target Domain</label>
+            <input class="form-input" id="cronDomain" placeholder="hermes-intel.duckdns.org">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Telegram Chat ID</label>
+            <input class="form-input" id="cronTgChat" placeholder="Get from @userinfobot on Telegram">
+          </div>
+          <button class="btn btn-primary" onclick="setupCronjob()" style="width:100%">⏰ Setup Nightly Scan</button>
+          <div id="cronResult" style="margin-top:0.8rem;font-size:0.75rem;color:var(--green);display:none"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ISSUE HUNTER (#404) -->
+  <div class="tab-content" id="tab-issuehunter">
+
+    <!-- One-shot tester -->
+    <div class="ih-one-shot">
+      <div class="ih-one-shot-title">⚡ One-Shot Test — Analyze any issue without a live repo</div>
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:0.6rem;margin-bottom:0.6rem">
+        <input class="target-input" id="osTitle" placeholder="Issue title: Memory leak in scanner">
+        <input class="target-input" id="osBody" placeholder="Issue body: When scanning >100 domains, RAM usage grows unbounded because…">
+      </div>
+      <button class="btn btn-primary" onclick="ihOneShot()">⚕ Ask Hermes to Fix</button>
+      <div class="ih-os-result" id="osResult"></div>
+    </div>
+
+    <div class="ih-layout">
+      <!-- LEFT — config + controls -->
+      <div>
+        <div class="ih-panel">
+          <div class="ih-title">🤖 Autonomous Issue Hunter</div>
+          <div style="font-size:0.73rem;color:var(--muted);margin-bottom:1rem;line-height:1.6;padding:0.7rem;background:var(--blue-bg);border-left:3px solid var(--blue);border-radius:0 6px 6px 0">
+            Hermes polls your GitHub repo, <strong>claims</strong> open issues, writes a fix using Hermes-4-405B, simulates CI, and posts a PR comment — fully autonomous. (Issue #404 — Symphony-inspired)
+          </div>
+
+          <!-- Status bar -->
+          <div class="ih-status-bar ih-sb-idle" id="ihStatusBar">
+            <div class="ih-dot ih-dot-idle" id="ihDot"></div>
+            <span id="ihStatusText">IDLE — Not running</span>
+          </div>
+
+          <!-- Stats -->
+          <div class="ih-stats">
+            <div class="ih-stat"><div class="ih-stat-num" id="ihClaimedNum">0</div><div class="ih-stat-lbl">Claimed</div></div>
+            <div class="ih-stat"><div class="ih-stat-num" id="ihPRNum">0</div><div class="ih-stat-lbl">PRs Opened</div></div>
+          </div>
+
+          <!-- Config -->
+          <div class="form-group">
+            <label class="form-label">GitHub Repo <span style="color:var(--red)">*</span></label>
+            <input class="form-input" id="ihRepo" placeholder="owner/repository">
+          </div>
+          <div class="form-group">
+            <label class="form-label">GitHub PAT Token <span style="color:var(--red)">*</span></label>
+            <input class="form-input" id="ihToken" type="password" placeholder="ghp_…">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Issue Labels (comma-separated)</label>
+            <input class="form-input" id="ihLabels" value="bug" placeholder="bug,help wanted">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Poll Interval (seconds)</label>
+            <input class="form-input" id="ihInterval" type="number" value="60" min="15">
+          </div>
+
+          <div style="display:flex;gap:0.6rem">
+            <button class="btn btn-primary" style="flex:1" onclick="ihStart()" id="ihStartBtn">▶ Start Hunter</button>
+            <button class="btn btn-secondary" onclick="ihStop()" id="ihStopBtn" style="opacity:0.5" disabled>■ Stop</button>
+          </div>
+          <button class="btn btn-secondary" style="width:100%;margin-top:0.5rem;font-size:0.72rem" onclick="ihRefresh()">↻ Refresh Status</button>
+
+          <!-- Live log -->
+          <div style="font-size:0.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:1rem 0 0.4rem">Live Agent Log</div>
+          <div class="ih-log" id="ihLog">
+            <div class="ih-log-line"><span class="ih-log-init">Issue Hunter ready — configure repo and start</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT — PR results -->
+      <div>
+        <div class="ih-panel" style="height:100%">
+          <div class="ih-title">📋 Autonomous PRs &amp; Fixes</div>
+          <div class="ih-pr-list" id="ihPRList">
+            <div class="empty"><div class="empty-icon">🤖</div>No PRs yet — start the Issue Hunter and let Hermes go to work</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DOMAIN INTEL -->
+  <!-- ARXIV RESEARCH -->
+  <div class="tab-content" id="tab-arxiv">
+    <div style="font-size:0.78rem;color:var(--muted);margin-bottom:1rem;padding:0.8rem;background:var(--purple-bg);border:1px solid var(--purple-border);border-radius:8px">
+      📄 <strong>ArXiv Research</strong> — Hermes searches academic security papers from arXiv (cs.CR) for any CVE or vulnerability. Click <em>Find Research</em> on any finding, or search manually below.
+    </div>
+    <div class="arxiv-search-row">
+      <input class="target-input" id="arxivQuery" placeholder="CVE-2024-1234 or 'SQL injection bypass WAF' or any vulnerability…" style="flex:1">
+      <button class="btn btn-primary" onclick="searchArxiv()">📄 Search ArXiv</button>
+    </div>
+    <div id="arxivLoading" style="display:none;font-size:0.75rem;color:var(--muted);padding:1rem;display:flex;align-items:center;gap:8px"><span class="spin">⟳</span> Searching arXiv cs.CR papers...</div>
+    <div id="arxivResults"></div>
+  </div>
+
+  <!-- DIAGRAM -->
+  <div class="tab-content" id="tab-diagram">
+    <div class="diagram-toolbar">
+      <button class="btn btn-primary" onclick="generateDiagram()">🗺 Generate Diagram</button>
+      <button class="btn btn-secondary" onclick="downloadExcalidraw()">↓ Export Excalidraw</button>
+      <button class="btn btn-secondary" onclick="downloadDiagramSVG()">↓ Export SVG</button>
+      <span style="font-size:0.72rem;color:var(--muted);margin-left:8px">Run a scan first, then generate the diagram</span>
+    </div>
+    <div class="diagram-desc" id="diagramDesc" style="display:none"></div>
+    <div class="diagram-canvas" id="diagramCanvas">
+      <div class="empty" style="margin-top:6rem"><div class="empty-icon">🗺</div>Run a scan and click Generate Diagram</div>
+    </div>
+  </div>
+
+  <!-- RECON LAB -->
+  <div class="tab-content" id="tab-reconlab">
+    <!-- Search bar -->
+    <div class="rl-search-row">
+      <input class="target-input" id="rlDomain" placeholder="example.com — Full threat intelligence analysis" style="flex:1">
+      <button class="btn btn-primary" onclick="rlRunAll()" id="rlRunBtn">🧬 Full Recon</button>
+      <button class="btn btn-secondary" onclick="rlRunWhois()">🔍 WHOIS</button>
+      <button class="btn btn-secondary" onclick="rlRunDomainIntel()">🌐 DNS/SSL</button>
+    </div>
+    <div class="rl-loading" id="rlLoading"><span class="spin">⟳</span> <span id="rlLoadingMsg">Hermes running full intelligence sweep...</span></div>
+
+    <!-- Stats row -->
+    <div class="rl-stat-row" id="rlStats" style="display:none">
+      <div class="rl-stat"><div class="rl-stat-num" id="rlStatScore">—</div><div class="rl-stat-lbl">Risk Score</div></div>
+      <div class="rl-stat"><div class="rl-stat-num" id="rlStatSubs">—</div><div class="rl-stat-lbl">Subdomains</div></div>
+      <div class="rl-stat"><div class="rl-stat-num" id="rlStatDNS">—</div><div class="rl-stat-lbl">DNS Records</div></div>
+      <div class="rl-stat"><div class="rl-stat-num" id="rlStatSSL">—</div><div class="rl-stat-lbl">SSL Days Left</div></div>
+    </div>
+
+    <!-- Main grid -->
+    <div class="rl-grid" id="rlMainGrid" style="display:none">
+
+      <!-- Hermes AI Assessment (full width) -->
+      <div class="rl-card rl-full">
+        <div class="rl-card-title">⚕ Hermes-4-405B Intelligence Assessment</div>
+        <div id="rlAIBox">
+          <div class="rl-threat-box" id="rlAISummary">—</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+            <div>
+              <div style="font-size:0.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem">Key Findings</div>
+              <div id="rlAIFindings"></div>
+            </div>
+            <div>
+              <div style="font-size:0.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem">Recommendations</div>
+              <div id="rlAIRecs"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WHOIS + Tech Stack -->
+      <div class="rl-card">
+        <div class="rl-card-title">🔍 WHOIS & Registration</div>
+        <div id="rlWhoisBox">
+          <div class="rl-row"><div class="rl-label">Registrar</div><div class="rl-val" id="rlRegistrar">—</div></div>
+          <div class="rl-row"><div class="rl-label">Created</div><div class="rl-val" id="rlCreated">—</div></div>
+          <div class="rl-row"><div class="rl-label">Expires</div><div class="rl-val" id="rlExpires">—</div></div>
+          <div class="rl-row"><div class="rl-label">Updated</div><div class="rl-val" id="rlUpdated">—</div></div>
+          <div class="rl-row"><div class="rl-label">Country</div><div class="rl-val" id="rlCountry">—</div></div>
+          <div class="rl-row"><div class="rl-label">Status</div><div class="rl-val" id="rlStatus">—</div></div>
+          <div class="rl-row"><div class="rl-label">Summary</div><div class="rl-val" id="rlWhoisSummary" style="color:var(--muted)">—</div></div>
+        </div>
+      </div>
+
+      <!-- Tech Stack -->
+      <div class="rl-card">
+        <div class="rl-card-title">⚙️ Technology Stack</div>
+        <div id="rlTechBox">
+          <div class="rl-row"><div class="rl-label">CMS</div><div class="rl-val" id="rlCMS">—</div></div>
+          <div class="rl-row"><div class="rl-label">Server</div><div class="rl-val" id="rlServer">—</div></div>
+          <div class="rl-row"><div class="rl-label">CDN / WAF</div><div class="rl-val" id="rlCDN">—</div></div>
+          <div class="rl-row"><div class="rl-label">Hosting</div><div class="rl-val" id="rlHosting">—</div></div>
+          <div class="rl-row">
+            <div class="rl-label">Frontend</div>
+            <div class="rl-val"><div class="rl-tech-grid" id="rlFrontend"></div></div>
+          </div>
+          <div class="rl-row">
+            <div class="rl-label">Backend</div>
+            <div class="rl-val"><div class="rl-tech-grid" id="rlBackend"></div></div>
+          </div>
+          <div class="rl-row">
+            <div class="rl-label">Analytics</div>
+            <div class="rl-val"><div class="rl-tech-grid" id="rlAnalytics"></div></div>
+          </div>
+          <div class="rl-row">
+            <div class="rl-label">Security</div>
+            <div class="rl-val"><div class="rl-tech-grid" id="rlSecurity"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DNS Records -->
+      <div class="rl-card">
+        <div class="rl-card-title">🗂 DNS Records</div>
+        <table class="rl-dns-table" id="rlDNSTable"><tbody><tr><td colspan="2" style="color:var(--muted)">—</td></tr></tbody></table>
+      </div>
+
+      <!-- SSL Certificate -->
+      <div class="rl-card">
+        <div class="rl-card-title">🔒 SSL Certificate</div>
+        <div class="rl-ssl-row" id="rlSSLGrid">
+          <div class="rl-ssl-item"><div class="rl-ssl-lbl">Issuer</div><div class="rl-ssl-val" id="rlSSLIssuer">—</div></div>
+          <div class="rl-ssl-item"><div class="rl-ssl-lbl">Subject</div><div class="rl-ssl-val" id="rlSSLSubject">—</div></div>
+          <div class="rl-ssl-item"><div class="rl-ssl-lbl">Expires</div><div class="rl-ssl-val" id="rlSSLExpires">—</div></div>
+          <div class="rl-ssl-item"><div class="rl-ssl-lbl">Days Left</div><div class="rl-ssl-val" id="rlSSLDays">—</div></div>
+          <div class="rl-ssl-item"><div class="rl-ssl-lbl">Version</div><div class="rl-ssl-val" id="rlSSLVersion">—</div></div>
+          <div class="rl-ssl-item"><div class="rl-ssl-lbl">SAN Count</div><div class="rl-ssl-val" id="rlSSLSAN">—</div></div>
+        </div>
+        <div style="margin-top:0.8rem">
+          <div style="font-size:0.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem">SAN Domains</div>
+          <div class="rl-tech-grid" id="rlSSLSANList"></div>
+        </div>
+      </div>
+
+      <!-- Subdomains -->
+      <div class="rl-card rl-full">
+        <div class="rl-card-title">🌐 Subdomains <span id="rlSubCount" style="font-size:0.68rem;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0"></span></div>
+        <div class="rl-sub-list" id="rlSubList">
+          <div class="rl-empty">Run recon to discover subdomains via crt.sh certificate transparency logs</div>
+        </div>
+      </div>
+
+    </div><!-- /rl-main-grid -->
+
+    <!-- Scan history -->
+    <div class="rl-history" id="rlHistoryWrap" style="margin-top:1rem">
+      <div style="font-size:0.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.6rem">Recent Targets</div>
+      <div id="rlHistory"><div class="rl-empty">No recent targets</div></div>
+    </div>
+  </div>
+  <!-- WALLET GUARD -->
+  <div class="tab-content" id="tab-walletguard">
+
+    <!-- Input -->
+    <div class="wg-input-row">
+      <input class="target-input" id="wgAddress" placeholder="0x... Ethereum/EVM wallet address or ENS name" style="flex:1;font-family:'IBM Plex Mono',monospace">
+      <button class="btn btn-primary" onclick="wgAnalyze()" id="wgBtn">🛡 Analyze</button>
+    </div>
+    <div class="wg-loading" id="wgLoading"><span class="spin">⟳</span><span id="wgLoadingMsg">Hermes analyzing wallet...</span></div>
+
+    <!-- Inner tabs -->
+    <div class="wg-tabs" id="wgTabBar" style="display:none">
+      <button class="wg-tab active" onclick="wgSwitchTab('overview',this)">📊 Overview</button>
+      <button class="wg-tab" onclick="wgSwitchTab('transactions',this)">📋 Transactions</button>
+      <button class="wg-tab" onclick="wgSwitchTab('tokens',this)">🪙 Token / NFT</button>
+      <button class="wg-tab" onclick="wgSwitchTab('security',this)">🔒 Security</button>
+    </div>
+
+    <!-- OVERVIEW -->
+    <div class="wg-section active" id="wgs-overview">
+      <div class="wg-grid">
+        <!-- Risk Score -->
+        <div class="wg-card">
+          <div class="wg-card-title">🛡 Risk Score</div>
+          <div class="wg-score-wrap">
+            <div class="wg-score-ring">
+              <svg class="wg-ring-svg" viewBox="0 0 130 130">
+                <circle class="wg-ring-bg" cx="65" cy="65" r="55"/>
+                <circle class="wg-ring-fill" id="wgRingFill" cx="65" cy="65" r="55"/>
+              </svg>
+              <div class="wg-score-center">
+                <div class="wg-score-num" id="wgScoreNum">—</div>
+                <div class="wg-score-denom">/100</div>
+              </div>
+            </div>
+            <div class="wg-risk-badge" id="wgRiskBadge" style="background:var(--bg2);color:var(--muted)">Awaiting</div>
+            <div style="font-size:0.68rem;color:var(--muted);text-align:center" id="wgScoreSub">Enter a wallet address and start analysis</div>
+          </div>
+        </div>
+
+        <!-- Stats + AI -->
+        <div>
+          <div class="wg-stat-grid" id="wgStatGrid">
+            <div class="wg-stat"><div class="wg-stat-num" id="wgStatBal">—</div><div class="wg-stat-lbl">ETH Balance</div></div>
+            <div class="wg-stat"><div class="wg-stat-num" id="wgStatTx">—</div><div class="wg-stat-lbl">Total TX</div></div>
+            <div class="wg-stat"><div class="wg-stat-num" id="wgStatTokens">—</div><div class="wg-stat-lbl">Token Count</div></div>
+            <div class="wg-stat"><div class="wg-stat-num" id="wgStatAge">—</div><div class="wg-stat-lbl">Wallet Age</div></div>
+          </div>
+          <div class="wg-card" style="margin-top:0">
+            <div class="wg-card-title">⚕ Hermes-4-405B Analysis</div>
+            <div class="wg-ai-box" id="wgAISummary">Awaiting analysis...</div>
+            <div id="wgAIFlags"></div>
+          </div>
+        </div>
+
+        <!-- Address Info (full width) -->
+        <div class="wg-card wg-full">
+          <div class="wg-card-title">📍 Address Info</div>
+          <div class="wg-addr" id="wgAddrDisplay">—</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.8rem" id="wgAddrMeta">
+            <div><div style="font-size:0.62rem;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:0.3rem">Type</div><div style="font-size:0.78rem;font-weight:600" id="wgAddrType">—</div></div>
+            <div><div style="font-size:0.62rem;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:0.3rem">First TX</div><div style="font-size:0.78rem;font-weight:600;font-family:'IBM Plex Mono',monospace" id="wgFirstTx">—</div></div>
+            <div><div style="font-size:0.62rem;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:0.3rem">Last TX</div><div style="font-size:0.78rem;font-weight:600;font-family:'IBM Plex Mono',monospace" id="wgLastTx">—</div></div>
+            <div><div style="font-size:0.62rem;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:0.3rem">Etherscan</div><div style="font-size:0.78rem"><a id="wgEtherscanLink" href="#" target="_blank" style="color:var(--blue);text-decoration:none">View →</a></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRANSACTIONS -->
+    <div class="wg-section" id="wgs-transactions">
+      <div class="wg-card">
+        <div class="wg-card-title">📋 Recent Transactions <span id="wgTxCount" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)"></span></div>
+        <div style="overflow-x:auto">
+          <table class="wg-tx-table">
+            <thead><tr>
+              <th>Hash</th><th>Type</th><th>Amount (ETH)</th><th>Counterpart</th><th>Date</th><th>Status</th>
+            </tr></thead>
+            <tbody id="wgTxBody"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:2rem">Awaiting analysis</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOKENS -->
+    <div class="wg-section" id="wgs-tokens">
+      <div class="wg-card" style="margin-bottom:1rem">
+        <div class="wg-card-title">🪙 ERC-20 Tokenlar</div>
+        <div class="wg-token-grid" id="wgTokenGrid">
+          <div style="grid-column:span 3;text-align:center;color:var(--muted);padding:2rem">Awaiting analysis</div>
+        </div>
+      </div>
+      <div class="wg-card">
+        <div class="wg-card-title">🖼 NFT Collections <span id="wgNFTCount" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)"></span></div>
+        <div id="wgNFTList" style="color:var(--muted);font-size:0.78rem;padding:0.5rem">Awaiting analysis</div>
+      </div>
+    </div>
+
+    <!-- SECURITY -->
+    <div class="wg-section" id="wgs-security">
+      <div class="wg-grid">
+        <div class="wg-card">
+          <div class="wg-card-title">🔒 Security Kontrolleri</div>
+          <div class="wg-check-list" id="wgCheckList">
+            <div style="color:var(--muted);font-size:0.78rem;padding:0.5rem">Awaiting analysis</div>
+          </div>
+        </div>
+        <div class="wg-card">
+          <div class="wg-card-title">⚠️ Risk Factors</div>
+          <div id="wgRiskFactors">
+            <div style="color:var(--muted);font-size:0.78rem;padding:0.5rem">Awaiting analysis</div>
+          </div>
+        </div>
+        <div class="wg-card wg-full">
+          <div class="wg-card-title">🤖 Hermes Security Recommendations</div>
+          <div id="wgSecurityRecs" style="color:var(--muted);font-size:0.78rem">Awaiting analysis</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tab-walletguard -->
+  <div class="log-wrap">
+    <div class="log-header">
+      <div class="log-title">Hermes Agent Live Log</div>
+      <div class="log-count" id="logCount">0 events</div>
+    </div>
+    <div class="log-body" id="logBody">
+      <div class="log-line"><span class="log-time">00:00:00</span><span class="log-type lt-init">INIT</span><span class="log-msg">Hermes Security Agent initialized — ready for target acquisition</span></div>
+      <div class="log-line"><span class="log-time">00:00:00</span><span class="log-type lt-sys">SYS</span><span class="log-msg">Tools loaded: nmap, ssl-checker, header-analyzer, cve-lookup, dns-recon</span></div>
+      <div class="log-line"><span class="log-time">00:00:00</span><span class="log-type lt-sys">SYS</span><span class="log-msg">Telegram gateway: @HermesSecurityBot connected</span></div>
+    </div>
+  </div>
+  </div><!-- /log-wrap -->
+</main>
+
+<footer>Hermes Security Platform — Autonomous Vulnerability Scanner — Nous Research Hackathon 2025 — hermes-intel.duckdns.org</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+const TG_TOKEN   = 'YOUR_TELEGRAM_BOT_TOKEN';
+const TG_CHAT_ID = '1069318856';
+
+let _scanData=null,_findings=[],_tests=[],logEvents=0,_startTime=null;
+
+setInterval(()=>{document.getElementById('clock').textContent=new Date().toLocaleTimeString()},1000);
+
+function switchTab(id,el){document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('tab-'+id).classList.add('active');el.classList.add('active');if(id==='schedule')loadSkills();if(id==='reconlab'&&_scanData&&_scanData.domain){const rl=document.getElementById('rlDomain');if(rl&&!rl.value)rl.value=_scanData.domain;}}
+
+function addLog(type,msg){const body=document.getElementById('logBody');const time=new Date().toLocaleTimeString();const d=document.createElement('div');d.className='log-line';d.style.animation='fadeIn 0.3s ease';d.innerHTML=`<span class="log-time">${time}</span><span class="log-type lt-${type}">${type.toUpperCase()}</span><span class="log-msg">${msg}</span>`;body.appendChild(d);body.scrollTop=body.scrollHeight;logEvents++;document.getElementById('logCount').textContent=logEvents+' events'}
+
+function showToast(msg,type=''){const t=document.createElement('div');t.className='toast'+(type?' '+type:'');t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),4000)}
+
+function updateScore(score){const color=score>=80?'var(--green)':score>=60?'var(--yellow)':score>=40?'var(--orange)':'var(--red)';const grade=score>=80?'Low Risk':score>=60?'Medium Risk':score>=40?'High Risk':'Critical';const circ=2*Math.PI*70;const offset=circ-(score/100)*circ;document.getElementById('scoreNum').textContent=score;document.getElementById('scoreNum').style.color=color;document.getElementById('scoreGrade').textContent=grade;document.getElementById('scoreGrade').style.color=color;document.getElementById('ringFill').style.stroke=color;document.getElementById('ringFill').style.strokeDasharray=circ;document.getElementById('ringFill').style.strokeDashoffset=offset}
+
+function delay(ms){return new Promise(r=>setTimeout(r,ms))}
+
+// ══ MAIN SCAN ══
+async function startScan(){
+  const input=document.getElementById('targetInput');
+  let target=input.value.trim();
+  if(!target){showToast('Enter a target domain','err');return}
+  const domain=target.replace(/^https?:\/\//,'').split('/')[0];
+  const btn=document.getElementById('scanBtn');
+  btn.disabled=true;btn.textContent='⟳ Scanning...';
+  document.getElementById('progressWrap').style.display='block';
+  document.getElementById('hermesPanel').style.display='none';
+  document.getElementById('findingsList').innerHTML='';
+  document.getElementById('testsGrid').innerHTML='';
+  _findings=[];_tests=[];_startTime=new Date();
+  addLog('info',`Target acquired: ${domain}`);
+  addLog('info','Hermes Agent initiating full autonomous security sweep...');
+  try{
+    const res=await fetch('/api/full-scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({domain})});
+    if(!res.ok)throw new Error('Hermes full-scan API error '+res.status);
+    const d=await res.json();
+    const elapsed=((Date.now()-_startTime.getTime())/1000).toFixed(1);
+    if(d.status==='unreachable'||!d.exists){
+      const findings=d.findings||[{level:'critical',title:'Domain Unreachable',port:'—',cvss:'10.0',desc:'Domain does not exist or is unreachable',cves:[],fix:null}];
+      _findings=findings;updateScore(0);
+      document.getElementById('critNum').textContent='1';document.getElementById('critSub').textContent='Domain unreachable';
+      document.getElementById('highNum').textContent='0';document.getElementById('medNum').textContent='0';document.getElementById('lowNum').textContent='0';
+      document.getElementById('sslVal').textContent='N/A';document.getElementById('sslVal').style.color='var(--red)';document.getElementById('sslSub').textContent='Unreachable';document.getElementById('sslSub').className='info-sub bad';
+      document.getElementById('headersVal').textContent='N/A';document.getElementById('portsVal').textContent='N/A';
+      document.getElementById('scanTimeVal').textContent=elapsed+'s';document.getElementById('scanTimeSub').textContent='Failed';
+      const end=new Date();document.getElementById('scoreMeta').innerHTML=`Start: ${_startTime.toLocaleTimeString()}<br>Finish: ${end.toLocaleTimeString()}<br>Duration: ${elapsed}s<br>Tests: 0/38`;
+      renderFindings(findings,'all');document.getElementById('findingsCount').textContent='1';document.getElementById('testsCount').textContent='0/38';
+      document.getElementById('progressWrap').style.display='none';document.getElementById('scanStatus').textContent=`✗ Scan failed — ${domain} unreachable`;
+      btn.disabled=false;btn.textContent='▶ Scan Again';
+      _scanData={domain,score:0,isHttps:false,critCount:1,highCount:0,medCount:0,lowCount:0,elapsed};
+      addLog('err','Scan aborted — domain unreachable: '+domain);return;
+    }
+    const findings=d.findings||[];const score=d.score||0;const isHttps=d.is_https||false;
+    const headersScore=d.headers_score||-1;const nmapPorts=d.ports||[];const hasRobots=d.has_robots||false;
+    addLog('ok',`Hermes nmap: ${nmapPorts.length} port(s) detected`);
+    nmapPorts.forEach(p=>addLog('info',`Port ${p.port}/TCP open — ${p.service}`));
+    isHttps?addLog('ok','SSL/TLS valid — HTTPS confirmed'):addLog('warn','No HTTPS detected');
+    if(headersScore>=0)addLog('info',`HTTP headers score: ${headersScore}%`);
+    hasRobots?addLog('ok','robots.txt found'):addLog('warn','robots.txt missing');
+    addLog('ok',`Hermes AI generated ${findings.length} findings`);
+    const critC=findings.filter(f=>f.level==='critical').length;const highC=findings.filter(f=>f.level==='high').length;
+    const medC=findings.filter(f=>f.level==='medium').length;const lowC=findings.filter(f=>f.level==='low').length;
+    const tests=[
+      {name:'SSL/TLS Certificate',r:isHttps?'pass':'fail'},{name:'HTTPS Redirect',r:isHttps?'pass':'fail'},
+      {name:'Content-Security-Policy',r:headersScore>60?'pass':'warn'},{name:'X-Frame-Options',r:headersScore>40?'pass':'warn'},
+      {name:'X-Content-Type-Options',r:headersScore>40?'pass':'warn'},{name:'Strict-Transport-Security',r:isHttps?'pass':'fail'},
+      {name:'Referrer-Policy',r:headersScore>60?'pass':'warn'},{name:'robots.txt Present',r:hasRobots?'pass':'warn'},
+      {name:'DNS Resolution',r:'pass'},{name:'Open Port Scan (nmap)',r:nmapPorts.length>0?'info':'pass'},
+      {name:'Exposed .env File',r:'pass'},{name:'Exposed .git Directory',r:'pass'},{name:'Directory Listing',r:'pass'},
+      {name:'HTTP Debug Methods',r:'pass'},{name:'Error Message Disclosure',r:'pass'},{name:'Password in URL',r:'pass'},
+      {name:'Secure Cookies',r:isHttps?'pass':'warn'},{name:'Mixed Content',r:'pass'},
+      {name:'Clickjacking Protection',r:headersScore>50?'pass':'warn'},{name:'CORS Policy',r:'info'},
+      {name:'CSRF Protection',r:'info'},{name:'SQL Injection (passive)',r:'pass'},{name:'XSS Detection (passive)',r:'pass'},
+      {name:'Admin Panel Exposure',r:'pass'},{name:'phpinfo.php Exposure',r:'pass'},{name:'Backup Files Check',r:'pass'},
+      {name:'CVE Database Lookup',r:findings.some(f=>f.cves&&f.cves.length)?'warn':'pass'},{name:'Cache Control Headers',r:'info'},
+      {name:'Feature-Policy Header',r:'warn'},{name:'HTTP/2 Support',r:isHttps?'pass':'fail'},
+      {name:'TLS Version Check',r:isHttps?'pass':'fail'},{name:'Certificate Expiry',r:isHttps?'pass':'fail'},
+      {name:'WAF Detection',r:'info'},{name:'Server Banner Disclosure',r:'warn'},{name:'Technology Fingerprint',r:'info'},
+      {name:'Sitemap Availability',r:'info'},{name:'Cookie Security Flags',r:isHttps?'pass':'warn'},{name:'Subresource Integrity',r:'info'},
+    ];
+    _findings=findings;_tests=tests;
+    _scanData={domain,score,isHttps,critCount:critC,highCount:highC,medCount:medC,lowCount:lowC,elapsed,timestamp:Date.now()};
+    updateScore(score);
+    document.getElementById('critNum').textContent=critC;document.getElementById('highNum').textContent=highC;
+    document.getElementById('medNum').textContent=medC;document.getElementById('lowNum').textContent=lowC;
+    document.getElementById('critSub').textContent=critC>0?'Immediate action':'None found';
+    document.getElementById('highSub').textContent=highC>0?'Needs fixing':'None found';
+    document.getElementById('medSub').textContent=medC>0?'Review recommended':'None found';
+    document.getElementById('lowSub').textContent=lowC>0?'Minor issues':'None found';
+    document.getElementById('sslVal').textContent=isHttps?'VALID':'NONE';document.getElementById('sslVal').style.color=isHttps?'var(--green)':'var(--red)';
+    document.getElementById('sslSub').textContent=isHttps?'HTTPS enabled':'HTTP only';document.getElementById('sslSub').className='info-sub '+(isHttps?'good':'bad');
+    document.getElementById('headersVal').textContent=headersScore>=0?headersScore+'%':'N/A';
+    document.getElementById('headersVal').style.color=headersScore>=60?'var(--green)':headersScore>=30?'var(--yellow)':'var(--muted)';
+    document.getElementById('headersSub').textContent=headersScore>=60?'Well configured':headersScore>=0?'Partially set':'CORS blocked';
+    document.getElementById('portsVal').textContent=nmapPorts.length>0?nmapPorts.map(p=>p.port).join(', '):'80, 443';
+    document.getElementById('scanTimeVal').textContent=elapsed+'s';document.getElementById('scanTimeSub').textContent='Complete';
+    const end=new Date();document.getElementById('scoreMeta').innerHTML=`Start: ${_startTime.toLocaleTimeString()}<br>Finish: ${end.toLocaleTimeString()}<br>Duration: ${elapsed}s<br>Tests: ${tests.length}/38`;
+    renderFindings(findings,'all');renderTests(tests);
+    document.getElementById('findingsCount').textContent=findings.filter(f=>!['good'].includes(f.level)).length;
+    document.getElementById('testsCount').textContent=`${tests.length}/38`;
+    addLog('ok',`Scan complete — Score: ${score}/100`);
+    addLog('ok',`Critical:${critC} High:${highC} Medium:${medC} Low:${lowC} — ${elapsed}s`);
+    document.getElementById('progressWrap').style.display='none';
+    document.getElementById('scanStatus').textContent=`✓ Scan complete — Score: ${score}/100 — ${elapsed}s — ${findings.length} findings`;
+    btn.disabled=false;btn.textContent='▶ Scan Again';
+    if(d.hermes_analysis){
+      const a=d.hermes_analysis;const panel=document.getElementById('hermesPanel');panel.style.display='block';
+      document.getElementById('hermesThreats').textContent=a.threat_assessment||'—';
+      document.getElementById('hermesAutoFix').textContent=a.auto_fix||'# No fix needed';
+      document.getElementById('hermesSkill').textContent=a.memory_saved||'—';
+      document.getElementById('hermesActions').innerHTML=(a.critical_actions||[]).map((ac,i)=>`<div class="hermes-action"><span class="hermes-action-num">${i+1}</span><span style="font-size:0.78rem;color:var(--text);line-height:1.6">${ac}</span></div>`).join('');
+      addLog('ok','Hermes-4-405B analysis complete');
+      if(a.memory_saved){addLog('sys','Memory saved: '+a.memory_saved.substring(0,80));fetch('/api/skills',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({domain,skill:a.memory_saved,score,timestamp:new Date().toISOString()})}).catch(()=>{});}
+    }
+    setTimeout(()=>sendTelegramAlert(),600);
+  }catch(e){
+    addLog('err','Hermes full-scan failed: '+e.message);
+    showToast('Hermes API error: '+e.message,'err');
+    document.getElementById('progressWrap').style.display='none';
+    document.getElementById('scanStatus').textContent='✗ Scan failed — Hermes API error';
+    btn.disabled=false;btn.textContent='▶ Scan Again';
+  }
+}
+
+// ══ HERMES AI ANALYSIS ══
+async function callHermesAI(){
+  if(!_scanData)return;
+  addLog('info','Calling Hermes-4-405B for AI security analysis...');
+  const panel=document.getElementById('hermesPanel');
+  panel.style.display='block';
+  document.getElementById('hermesThreats').textContent='⟳ Hermes-4-405B analyzing...';
+  try{
+    const r=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({domain:_scanData.domain,score:_scanData.score,findings:_findings.map(f=>({level:f.level,title:f.title,cvss:f.cvss}))})});
+    if(!r.ok)throw new Error('API '+r.status);
+    const d=await r.json();const a=d.hermes_analysis;
+    document.getElementById('hermesThreats').textContent=a.threat_assessment||'—';
+    document.getElementById('hermesAutoFix').textContent=a.auto_fix||'# No fix needed';
+    document.getElementById('hermesSkill').textContent=a.memory_saved||'—';
+    document.getElementById('hermesActions').innerHTML=(a.critical_actions||[]).map((ac,i)=>`<div class="hermes-action"><span class="hermes-action-num">${i+1}</span><span style="font-size:0.78rem;color:var(--text);line-height:1.6">${ac}</span></div>`).join('');
+    addLog('ok','Hermes-4-405B analysis complete');
+    addLog('sys','Memory saved: '+(a.memory_saved||'').substring(0,80));
+    if(a.memory_saved)fetch('/api/skills',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({domain:_scanData.domain,skill:a.memory_saved,score:_scanData.score,timestamp:new Date().toISOString()})}).catch(()=>{});
+  }catch(e){document.getElementById('hermesThreats').textContent='Hermes API unavailable — '+e.message;addLog('warn','AI analysis failed: '+e.message)}
+}
+
+// ══ FINDINGS ══
+function renderFindings(findings,filter){
+  const list=document.getElementById('findingsList');
+  const filtered=filter==='all'?findings:filter==='info'?findings.filter(f=>f.level==='info'||f.level==='good'):findings.filter(f=>f.level===filter);
+  document.getElementById('fc-all').textContent=findings.length;
+  document.getElementById('fc-crit').textContent=findings.filter(f=>f.level==='critical').length;
+  document.getElementById('fc-high').textContent=findings.filter(f=>f.level==='high').length;
+  document.getElementById('fc-med').textContent=findings.filter(f=>f.level==='medium').length;
+  document.getElementById('fc-low').textContent=findings.filter(f=>f.level==='low').length;
+  document.getElementById('fc-info').textContent=findings.filter(f=>['info','good'].includes(f.level)).length;
+  if(!filtered.length){list.innerHTML='<div class="empty"><div class="empty-icon">✅</div>No findings for this filter</div>';return}
+  list.innerHTML=filtered.map((f,i)=>`
+    <div class="finding-card" id="fc${i}">
+      <div class="finding-header" onclick="document.getElementById('fc${i}').classList.toggle('open')">
+        <span class="sev-badge sb-${f.level}">${f.level.toUpperCase()}</span>
+        <span class="finding-title">${f.title}</span>
+        <div class="finding-tags">
+          ${f.port!=='—'?`<span class="finding-tag">${f.port}</span>`:''}
+          ${f.cvss!=='—'?`<span class="finding-cvss">CVSS ${f.cvss}</span>`:''}
+          <button class="arxiv-btn" onclick="event.stopPropagation();hermesArxivFinding(this)">📄 Research</button>
+        </div>
+        <span class="finding-chevron">▼</span>
+      </div>
+      <div class="finding-body">
+        <p class="finding-desc">${f.desc}</p>
+        ${f.cves.length?`<table class="cve-table"><thead><tr><th>CVE ID</th><th>CVSS</th><th>EPSS</th><th>Summary</th></tr></thead><tbody>${f.cves.map(c=>`<tr><td><a class="cve-link" href="https://nvd.nist.gov/vuln/detail/${c.id}" target="_blank">${c.id}</a></td><td>${c.cvss}</td><td>${c.epss}</td><td>${c.desc}</td></tr>`).join('')}</tbody></table>`:''}
+        ${f.level!=='good'&&f.level!=='info'?`
+        <div class="swe-box" id="swe-${i}">
+          <div class="swe-header">
+            <div class="swe-label">🤖 mini-swe-agent — AI Auto-Fix</div>
+            <button class="swe-btn" onclick="runSweAgent(${i},'${f.title.replace(/'/g,"\\'")}','${f.level}')">Generate Fix</button>
+          </div>
+          <div id="swe-body-${i}"></div>
+        </div>`:''}
+      </div>
+    </div>`).join('')
+}
+
+function filterFindings(level,btn){
+  document.querySelectorAll('.filter-chip').forEach(b=>b.className='filter-chip');
+  const m={all:'fc-active-all',critical:'fc-active-crit',high:'fc-active-high',medium:'fc-active-med',low:'fc-active-low',info:'fc-active-info'};
+  btn.classList.add(m[level]||'fc-active-all');
+  renderFindings(_findings,level);
+}
+
+// ══ SWE AGENT ══
+async function runSweAgent(idx,vuln,vulnType){
+  const body=document.getElementById('swe-body-'+idx);
+  body.innerHTML='<div class="swe-loading"><span class="spin">⟳</span> Hermes mini-swe-agent analyzing vulnerability...</div>';
+  try{
+    const r=await fetch('/swe-agent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({domain:_scanData?.domain||'target',vuln,vuln_type:vulnType})});
+    if(!r.ok)throw new Error('API '+r.status);
+    const d=await r.json();const s=d.swe_agent_fix;
+    body.innerHTML=`
+      <div class="swe-result">
+        <div class="swe-understanding">${s.understanding||'—'}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+          <span style="font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase">Fix Code (${s.fix_type||'bash'})</span>
+          <div style="display:flex;gap:0.5rem;align-items:center">
+            <span class="confidence-badge conf-${s.confidence||'MEDIUM'}">${s.confidence||'MEDIUM'}</span>
+            <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('swe-code-${idx}').textContent).then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',2000)})">Copy</button>
+          </div>
+        </div>
+        <div class="swe-code-wrap"><pre id="swe-code-${idx}">${s.fix_code||'# No fix generated'}</pre></div>
+        ${s.test_commands?.length?`<div class="swe-tests"><strong style="font-size:0.68rem;color:var(--muted)">Verification Commands:</strong>${s.test_commands.map(c=>`<div class="swe-test-cmd">${c}</div>`).join('')}</div>`:''}
+      </div>`;
+    addLog('ok',`mini-swe-agent: fix generated for "${vuln.substring(0,50)}" (${s.confidence} confidence)`);
+  }catch(e){body.innerHTML=`<div class="swe-loading" style="color:var(--red)">SWE Agent unavailable: ${e.message}</div>`;addLog('warn','SWE Agent failed: '+e.message)}
+}
+
+// ══ TESTS ══
+function renderTests(tests){
+  document.getElementById('testsProgressLabel').textContent=`${tests.length} / 38 tests performed`;
+  document.getElementById('testsBar').style.width=(tests.length/38*100)+'%';
+  const icons={pass:'✓',fail:'✗',warn:'!',info:'i'};
+  document.getElementById('testsGrid').innerHTML=tests.map(t=>`
+    <div class="test-row">
+      <div class="test-icon ti-${t.r}">${icons[t.r]||'i'}</div>
+      <span class="test-name">${t.name}</span>
+      <span class="test-status ts-${t.r}">${t.r.toUpperCase()}</span>
+    </div>`).join('')
+}
+
+// ══ MULTI-SCAN (delegate_task) ══
+async function startMultiScan(){
+  const targets=[document.getElementById('t1').value.trim(),document.getElementById('t2').value.trim(),document.getElementById('t3').value.trim()].filter(Boolean);
+  if(!targets.length){showToast('Enter at least one target','err');return}
+  addLog('info',`delegate_task — Hermes spawning ${targets.length} parallel agents via API...`);
+  targets.forEach((t,i)=>{
+    const domain=t.replace(/^https?:\/\//,'').split('/')[0];
+    document.getElementById('mc'+(i+1)).innerHTML=`<div class="mc-domain">${domain}</div><div class="mc-scanning"><span class="spin">⟳</span>Hermes Agent scanning...</div>`;
+  });
+  try{
+    const domains=targets.map(t=>t.replace(/^https?:\/\//,'').split('/')[0]);
+    const r=await fetch('/api/delegate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({domains})});
+    if(!r.ok)throw new Error('API '+r.status);
+    const data=await r.json();
+    addLog('ok',`Hermes-4-405B parallel scan complete — ${data.agent_count} agents`);
+    domains.forEach((domain,i)=>{
+      const card=document.getElementById('mc'+(i+1));
+      const res=data.results[domain];
+      if(!res){card.innerHTML=`<div class="mc-domain">${domain}</div><div style="color:var(--red);font-size:0.75rem;margin-top:1rem">Scan failed</div>`;return}
+      const score=res.ai_score||70;
+      const color=score>=80?'var(--green)':score>=60?'var(--yellow)':score>=40?'var(--orange)':'var(--red)';
+      const grade=res.ai_risk||'MEDIUM';
+      const ports=res.ports?.map(p=>p.port+'/'+p.service).join(', ')||'—';
+      card.innerHTML=`
+        <div class="mc-domain">${domain}</div>
+        <div class="mc-score" style="color:${color}">${score}</div>
+        <div class="mc-risk" style="color:${color}">${grade}</div>
+        <div class="mc-bar"><div class="mc-bar-fill" style="width:${score}%;background:${color}"></div></div>
+        <div class="mc-ports">Ports: ${ports}</div>
+        <div class="mc-issue">⚠ ${res.top_issue||'—'}</div>
+        <div class="mc-fix">⚡ ${res.quick_fix||'—'}</div>`;
+      addLog('ok',`Agent ${i+1}: ${domain} → ${score}/100 ${grade}`);
+    });
+  }catch(e){
+    addLog('warn','Hermes delegate API failed: '+e.message);
+    targets.forEach((t,i)=>runFallbackScan(t,i+1));
+  }
+}
+
+async function runFallbackScan(target,idx){
+  if(!target.startsWith('http'))target='https://'+target;
+  const domain=target.replace(/^https?:\/\//,'').split('/')[0];
+  await delay(1000+idx*300);
+  const isHttps=target.startsWith('https');let score=isHttps?85:50;
+  const color=score>=80?'var(--green)':'var(--orange)';const grade=score>=80?'SECURE':'AT RISK';
+  document.getElementById('mc'+idx).innerHTML=`<div class="mc-domain">${domain}</div><div class="mc-score" style="color:${color}">${score}</div><div class="mc-risk" style="color:${color}">${grade}</div><div class="mc-bar"><div class="mc-bar-fill" style="width:${score}%;background:${color}"></div></div><div class="mc-ports">SSL: ${isHttps?'✓ Valid':'✗ None'}</div>`;
+  addLog('ok',`Agent ${idx}: ${domain} → ${score}/100 ${grade} (browser mode)`);
+}
+
+// ══ SCHEDULE CRONJOB ══
+async function setupCronjob(){
+  const domain=document.getElementById('cronDomain').value.trim();
+  const tgChat=document.getElementById('cronTgChat').value.trim();
+  const tgToken=TG_TOKEN;
+  if(!domain){showToast('Enter a domain','err');return}
+  if(!tgChat){showToast('Enter your Telegram Chat ID','err');return}
+  addLog('info',`schedule_cronjob — scheduling nightly scan for ${domain}...`);
+  try{
+    const r=await fetch('/api/cronjob',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({domain,tg_token:tgToken,tg_chat:tgChat})});
+    if(!r.ok)throw new Error('API '+r.status);
+    const d=await r.json();
+    const result=document.getElementById('cronResult');
+    result.style.display='block';result.style.color='var(--green)';
+    result.innerHTML=`✓ ${d.message}<br><span style="color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:0.68rem">${d.cron}</span>`;
+    addLog('ok','Cronjob scheduled: '+d.message);showToast('✓ Nightly scan scheduled!','ok');
+  }catch(e){showToast('Cronjob setup failed: '+e.message,'err');addLog('warn','Cronjob failed: '+e.message)}
+}
+
+// ══ SKILLS ══
+async function loadSkills(){
+  try{
+    const r=await fetch('/api/skills');if(!r.ok)return;
+    const d=await r.json();
+    const list=document.getElementById('skillsList');
+    if(!d.skills||!d.skills.length){list.innerHTML='<div class="empty"><div class="empty-icon">🧠</div>No skills learned yet — run some scans!</div>';return}
+    list.innerHTML=d.skills.slice(-10).reverse().map(s=>`
+      <div class="skill-item">
+        <div class="skill-domain">${s.domain}</div>
+        <div class="skill-text">${s.skill}</div>
+        <div class="skill-meta">Score: ${s.score}/100 — ${new Date(s.timestamp).toLocaleString()}</div>
+      </div>`).join('');
+  }catch(e){}
+}
+
+// ══ TELEGRAM ══
+async function sendTelegramAlert(){
+  if(!_scanData)return;
+  if(TG_TOKEN==='YOUR_BOT_TOKEN'){addLog('warn','Telegram not configured');return}
+  const{domain,score,isHttps,critCount,highCount,medCount,lowCount,elapsed}=_scanData;
+  const emoji=score>=80?'🟢':score>=60?'🟡':score>=40?'🟠':'🔴';
+  const riskBar=score>=80?'🟩🟩🟩🟩🟩':score>=60?'🟨🟨🟨🟩🟩':score>=40?'🟧🟧🟨🟩🟩':'🟥🟥🟧🟨🟩';
+  const status=score>=80?'LOW RISK ✅':score>=60?'MEDIUM RISK ⚠️':score>=40?'HIGH RISK 🚨':'CRITICAL 🆘';
+  const total=critCount+highCount+medCount+lowCount;
+  const topFindings=(_findings||[]).filter(f=>['critical','high','medium'].includes(f.level)).slice(0,3);
+  const findingsText=topFindings.length>0?topFindings.map((f,i)=>`${i+1}\. [${f.level.toUpperCase()}] ${f.title}`).join('\n'):'✅ No critical issues';
+  const domainIntel=_scanData.domainIntel;
+  const intelText=domainIntel?`🌍 IP: ${domainIntel.ip||'N/A'} | 📍 ${domainIntel.country||'N/A'} | 🏢 ${domainIntel.org||'N/A'}`:'🌍 Domain intel not run';
+  const ihIssues=window._ihLastIssues||[];
+  const issueText=ihIssues.length>0?ihIssues.slice(0,2).map(i=>`🐛 ${i}`).join('\n'):'🐛 No issues detected';
+  const arxivPapers=window._arxivLastPapers||[];
+  const arxivText=arxivPapers.length>0?arxivPapers.slice(0,2).map(a=>`📄 ${a.title||a}`).join('\n'):'📄 No related papers';
+  const msg=`⚕ <b>HERMES SECURITY REPORT</b>
+━━━━━━━━━━━━━━━━━━━━━━
+🎯 <b>Target:</b> <code>${domain}</code>
+🕐 ${new Date().toLocaleString()}
+
+${emoji} <b>Score: ${score}/100</b> ${riskBar}
+🏷 <b>Risk:</b> ${status}
+${isHttps?'🔒':'⚠️'} SSL: ${isHttps?'Valid ✅':'MISSING ❌'}
+
+━━━━━━━━━━━━━━━━━━━━━━
+📋 <b>FINDINGS (${total} total)</b>
+🔴 Critical: ${critCount}  🟠 High: ${highCount}
+🟡 Medium: ${medCount}  🔵 Low: ${lowCount}
+
+🔍 <b>TOP ISSUES</b>
+${findingsText}
+
+━━━━━━━━━━━━━━━━━━━━━━
+📌 <b>QUICK COMMANDS</b>
+/scan [domain] — Full security scan (30-60s)
+/summary [domain] — Risk overview
+/findings [domain] — All vulnerabilities found
+/domainintel [domain] — IP, DNS, SSL, subdomains
+/arxiv [query] — Academic CVE research
+/clear — Clear conversation history
+
+━━━━━━━━━━━━━━━━━━━━━━
+🤖 <i>Hermes-4-405B — Nous Research Hackathon 2025</i>
+🔗 hermes-intel.duckdns.org`;
+  try{const r=await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:TG_CHAT_ID,text:msg,parse_mode:'HTML'})});const d=await r.json();if(d.ok){showToast('✓ Telegram sent!','ok');addLog('ok','Telegram alert sent')}else{addLog('warn','Telegram: '+d.description);console.error(d)}}catch(e){addLog('warn','Telegram unreachable')}
+}
+function manualTelegram(){if(!_scanData){showToast('Run a scan first','err');return}sendTelegramAlert()}
+
+// ══ ISSUE HUNTER (#404) ══════════════════════════════
+let _ihPolling = null;
+
+function ihSetStatus(running){
+  const bar=document.getElementById('ihStatusBar');
+  const dot=document.getElementById('ihDot');
+  const txt=document.getElementById('ihStatusText');
+  const startBtn=document.getElementById('ihStartBtn');
+  const stopBtn=document.getElementById('ihStopBtn');
+  const badge=document.getElementById('ihBadge');
+  if(running){
+    bar.className='ih-status-bar ih-sb-running';
+    dot.className='ih-dot ih-dot-running';
+    txt.textContent='RUNNING — Polling for issues';
+    startBtn.disabled=true;startBtn.style.opacity='0.5';
+    stopBtn.disabled=false;stopBtn.style.opacity='1';
+    badge.textContent='LIVE';badge.style.background='var(--green-bg)';badge.style.color='var(--green)';
+  } else {
+    bar.className='ih-status-bar ih-sb-idle';
+    dot.className='ih-dot ih-dot-idle';
+    txt.textContent='IDLE — Not running';
+    startBtn.disabled=false;startBtn.style.opacity='1';
+    stopBtn.disabled=true;stopBtn.style.opacity='0.5';
+    badge.textContent='IDLE';badge.style.background='';badge.style.color='';
+  }
+}
+
+function ihRenderLog(log){
+  const el=document.getElementById('ihLog');
+  if(!log||!log.length)return;
+  el.innerHTML=log.map(e=>{
+    const lc={'init':'ih-log-init','ok':'ih-log-ok','warn':'ih-log-warn','error':'ih-log-error','info':'ih-log-info'}[e.level]||'ih-log-info';
+    const t=e.t?e.t.slice(11,19):'';
+    return `<div class="ih-log-line"><span class="ih-log-t">${t}</span><span class="${lc}">${e.msg}</span></div>`;
+  }).join('');
+  el.scrollTop=el.scrollHeight;
+}
+
+function ihRenderPRs(prs){
+  const el=document.getElementById('ihPRList');
+  if(!prs||!prs.length){el.innerHTML='<div class="empty"><div class="empty-icon">🤖</div>No PRs yet — start the Issue Hunter and let Hermes go to work</div>';return}
+  el.innerHTML=[...prs].reverse().map((p,i)=>`
+    <div class="ih-pr-card">
+      <div class="ih-pr-top">
+        <span class="ih-pr-num">#${p.issue_number}</span>
+        <span class="ih-pr-title">${p.pr_title||p.issue_title}</span>
+        <span class="${p.ci_pass?'ih-ci-pass':'ih-ci-fail'}">${p.ci_pass?'✓ CI PASS':'✗ CI FAIL'}</span>
+      </div>
+      <div class="ih-pr-meta">
+        <span class="ih-tag">🔧 ${p.fix_type}</span>
+        <span class="ih-tag">📊 ${p.confidence}</span>
+        <span class="ih-tag">⏱ ${p.estimated_effort}</span>
+        <span class="ih-tag">${p.pr_comment_posted?'💬 Comment posted':'💬 Comment failed'}</span>
+      </div>
+      <div class="ih-pr-understood">${p.understood||''}</div>
+      <div><span class="ih-pr-branch">⎇ ${p.branch}</span></div>
+      ${p.test_commands&&p.test_commands.length?`<div style="margin-top:0.5rem;font-size:0.68rem;color:var(--muted)">Verification: ${p.test_commands.map(c=>`<span style="font-family:'IBM Plex Mono',monospace;background:var(--bg2);padding:1px 6px;border-radius:3px;margin-left:4px">${c}</span>`).join('')}</div>`:''}
+      <button class="ih-pr-toggle" onclick="ihToggleCode(this)">▸ Show fix code</button>
+      <div class="ih-pr-code"><pre>${(p.fix_code||'').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre></div>
+    </div>`).join('');
+}
+
+function ihToggleCode(btn){
+  const box=btn.nextElementSibling;
+  const open=box.style.display==='block';
+  box.style.display=open?'none':'block';
+  btn.textContent=open?'▸ Show fix code':'▾ Hide fix code';
+}
+
+async function ihRefresh(){
+  try{
+    const r=await fetch('/issue-hunter/status');
+    if(!r.ok)return;
+    const d=await r.json();
+    ihSetStatus(d.running);
+    document.getElementById('ihClaimedNum').textContent=d.claimed_count||0;
+    document.getElementById('ihPRNum').textContent=d.pr_count||0;
+    ihRenderLog(d.log);
+    ihRenderPRs(d.prs);
+  }catch(e){addLog('warn','Issue Hunter status fetch failed')}
+}
+
+async function ihStart(){
+  const repo=document.getElementById('ihRepo').value.trim();
+  const token=document.getElementById('ihToken').value.trim();
+  const labels=document.getElementById('ihLabels').value.trim()||'bug';
+  const interval=parseInt(document.getElementById('ihInterval').value)||60;
+  if(!repo||!token){showToast('Repo and token are required','err');return}
+  try{
+    const r=await fetch('/issue-hunter/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({repo,token,labels,interval})});
+    const d=await r.json();
+    if(d.status==='started'||d.status==='already_running'){
+      ihSetStatus(true);
+      addLog('ok',`Issue Hunter started — ${repo}`);
+      showToast('🤖 Issue Hunter running!','ok');
+      // Start auto-refresh
+      if(_ihPolling)clearInterval(_ihPolling);
+      _ihPolling=setInterval(ihRefresh,5000);
+      ihRefresh();
+    }
+  }catch(e){showToast('Failed to start Issue Hunter','err')}
+}
+
+async function ihStop(){
+  try{
+    await fetch('/issue-hunter/stop',{method:'POST'});
+    ihSetStatus(false);
+    if(_ihPolling){clearInterval(_ihPolling);_ihPolling=null}
+    addLog('warn','Issue Hunter stopped');
+    showToast('Issue Hunter stopped','warn');
+  }catch(e){}
+}
+
+async function ihOneShot(){
+  const title=document.getElementById('osTitle').value.trim();
+  const body=document.getElementById('osBody').value.trim();
+  if(!title){showToast('Enter an issue title','err');return}
+  const res=document.getElementById('osResult');
+  res.style.display='block';
+  res.innerHTML=`<div style="font-size:0.75rem;color:var(--muted);padding:0.8rem;display:flex;align-items:center;gap:8px"><span class="spin">⟳</span>Hermes is analyzing the issue…</div>`;
+  try{
+    const r=await fetch('/issue-hunter/analyze-one',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,body})});
+    const d=await r.json();
+    if(d.error){res.innerHTML=`<div style="color:var(--red);font-size:0.75rem">${d.error}</div>`;return}
+    const a=d.hermes_analysis;
+    res.innerHTML=`
+      <div style="background:var(--blue-bg);border:1px solid var(--blue-border);border-radius:8px;padding:1rem;margin-top:0.8rem">
+        <div style="font-size:0.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem">Hermes Analysis</div>
+        <div style="font-size:0.78rem;color:var(--text);margin-bottom:0.6rem"><strong>Understood:</strong> ${a.understood||''}</div>
+        <div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.8rem"><strong>Root cause:</strong> ${a.root_cause||''}</div>
+        <div style="display:flex;gap:0.5rem;margin-bottom:0.8rem;flex-wrap:wrap">
+          <span class="ih-tag">🔧 ${a.fix_type}</span>
+          <span class="ih-tag">📊 ${a.confidence}</span>
+          <span class="ih-tag">⏱ ${a.estimated_effort}</span>
+        </div>
+        <div style="background:#1a2332;border-radius:6px;padding:0.8rem">
+          <pre style="font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:#7dd3fc;line-height:1.8;white-space:pre-wrap;word-break:break-all">${(a.fix_code||'').replace(/</g,'&lt;')}</pre>
+        </div>
+        ${a.test_commands&&a.test_commands.length?`<div style="margin-top:0.7rem;font-size:0.72rem;color:var(--muted)"><strong>Verify:</strong> ${a.test_commands.map(c=>`<div style="font-family:'IBM Plex Mono',monospace;background:var(--bg2);padding:3px 8px;border-radius:4px;margin-top:3px">${c}</div>`).join('')}</div>`:''}
+      </div>`;
+  }catch(e){res.innerHTML=`<div style="color:var(--red);font-size:0.75rem">Request failed</div>`}
+}
+
+
+
+// ══════════════════════════════════════════════════════════════
+//  DOMAIN INTEL
+// ══════════════════════════════════════════════════════════════
+let _lastDomainIntel = null;
+
+async function runDomainIntel() {
+  let domain = document.getElementById('diDomain').value.trim();
+  if (!domain && _scanData) domain = _scanData.domain;
+  if (!domain) { showToast('Enter a domain or run a scan first', 'err'); return; }
+  domain = domain.replace(/^https?:\/\//,'').split('/')[0];
+  document.getElementById('diDomain').value = domain;
+  document.getElementById('diLoading').style.display = 'flex';
+  document.getElementById('diResults').style.display = 'none';
+  addLog('info', `Domain Intel: analyzing ${domain}…`);
+  try {
+    const r = await fetch('/api/domain-intel', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({domain})});
+    if (!r.ok) throw new Error('API ' + r.status);
+    const d = await r.json();
+    _lastDomainIntel = d;
+    document.getElementById('diLoading').style.display = 'none';
+    document.getElementById('diResults').style.display = 'block';
+    // AI summary
+    const ai = d.ai_analysis || {};
+    document.getElementById('diRiskBadge').className = `di-risk-badge di-risk-${ai.risk_level||'MEDIUM'}`;
+    document.getElementById('diRiskBadge').textContent = ai.risk_level || '—';
+    document.getElementById('diExposureScore').textContent = ai.exposure_score || '—';
+    document.getElementById('diAISummary').textContent = ai.summary || '—';
+    document.getElementById('diAIFindings').innerHTML = (ai.key_findings||[]).map(f=>`<div class="di-ai-finding">• ${f}</div>`).join('');
+    // Subdomains
+    document.getElementById('diSubCount').textContent = `(${d.subdomains.length} found)`;
+    document.getElementById('diSubList').innerHTML = d.subdomains.length
+      ? d.subdomains.map(s=>`<div class="di-sub-item" onclick="document.getElementById('diDomain').value='${s}'">${s}</div>`).join('')
+      : '<div class="empty" style="padding:1rem">No subdomains discovered via crt.sh</div>';
+    // DNS
+    const tbody = document.querySelector('#diDNSTable tbody');
+    tbody.innerHTML = Object.entries(d.dns||{}).length
+      ? Object.entries(d.dns).flatMap(([type, vals]) => vals.map((v,i)=>`<tr><td>${i===0?type:''}</td><td>${v}</td></tr>`)).join('')
+      : '<tr><td colspan="2" style="color:var(--muted);padding:0.8rem">No DNS records retrieved</td></tr>';
+    // SSL Cert
+    const ssl = d.ssl_cert || {};
+    if (ssl.error) {
+      document.getElementById('diSSLGrid').innerHTML = `<div style="color:var(--red);font-size:0.75rem;grid-column:span 2">${ssl.error}</div>`;
+    } else {
+      const daysLeft = ssl.days_left ?? -1;
+      const daysColor = daysLeft < 0 ? 'var(--red)' : daysLeft < 30 ? 'var(--yellow)' : 'var(--green)';
+      document.getElementById('diSSLGrid').innerHTML = [
+        ['Issuer', ssl.issuer?.organizationName || '—'],
+        ['Subject', ssl.subject?.commonName || '—'],
+        ['Expires', ssl.notAfter || '—'],
+        ['Days Left', `<span style="color:${daysColor};font-weight:700">${daysLeft >= 0 ? daysLeft + ' days' : 'EXPIRED'}</span>`],
+        ['Version', ssl.version || '—'],
+        ['SAN Count', ssl.san?.length || 0],
+      ].map(([l,v])=>`<div class="di-ssl-item"><div class="di-ssl-label">${l}</div><div class="di-ssl-val">${v}</div></div>`).join('');
+    }
+    // Recommendations
+    document.getElementById('diRecs').innerHTML = (ai.recommendations||['No recommendations available']).map((r,i)=>`
+      <div style="display:flex;gap:8px;align-items:flex-start;padding:0.6rem;background:var(--bg);border:1px solid var(--border);border-radius:6px">
+        <span style="min-width:20px;height:20px;background:var(--blue);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.6rem;font-weight:700;flex-shrink:0;margin-top:1px">${i+1}</span>
+        <span style="font-size:0.75rem;color:var(--text);line-height:1.5">${r}</span>
+      </div>`).join('');
+    addLog('ok', `Domain Intel: ${d.subdomains.length} subdomains, ${Object.keys(d.dns).length} DNS records, SSL ${ssl.days_left ?? 'N/A'} days`);
+  } catch(e) {
+    document.getElementById('diLoading').style.display = 'none';
+    showToast('Domain Intel failed: ' + e.message, 'err');
+    addLog('warn', 'Domain Intel error: ' + e.message);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ARXIV RESEARCH
+// ══════════════════════════════════════════════════════════════
+let _lastArxivData = null;
+
+async function searchArxiv(query) {
+  const q = query || document.getElementById('arxivQuery').value.trim();
+  if (!q) { showToast('Enter a search query', 'err'); return; }
+  document.getElementById('arxivLoading').style.display = 'flex';
+  document.getElementById('arxivResults').innerHTML = '';
+  addLog('info', `ArXiv search: "${q.substring(0,50)}"…`);
+  try {
+    const r = await fetch('/api/arxiv-search', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({query:q})});
+    if (!r.ok) throw new Error('API ' + r.status);
+    const d = await r.json();
+    _lastArxivData = d;
+    document.getElementById('arxivLoading').style.display = 'none';
+    if (!d.papers || !d.papers.length) {
+      document.getElementById('arxivResults').innerHTML = '<div class="empty"><div class="empty-icon">📄</div>No papers found for this query</div>';
+      return;
+    }
+    document.getElementById('arxivResults').innerHTML = `
+      <div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.8rem">Found ${d.papers.length} papers for "<strong>${d.query}</strong>"</div>
+      ${d.ai_comment ? `<div class="arxiv-ai" style="margin-bottom:1rem">🤖 ${d.ai_comment}</div>` : ''}
+      ${d.papers.map(p=>`
+      <div class="arxiv-paper">
+        <div class="arxiv-title"><a href="${p.link}" target="_blank">${p.title}</a></div>
+        <div class="arxiv-meta">
+          <span class="arxiv-tag">📅 ${p.published}</span>
+          <span class="arxiv-tag">🏷 ${p.category}</span>
+          ${p.authors.map(a=>`<span class="arxiv-tag">👤 ${a}</span>`).join('')}
+          <a href="${p.pdf}" target="_blank" style="font-size:0.62rem;padding:2px 8px;border-radius:4px;background:var(--red-bg);color:var(--red);border:1px solid var(--red-border);text-decoration:none">📄 PDF</a>
+        </div>
+        <div class="arxiv-summary">${p.summary}…</div>
+      </div>`).join('')}`;
+    addLog('ok', `ArXiv: ${d.papers.length} papers found for "${q.substring(0,40)}"`);
+  } catch(e) {
+    document.getElementById('arxivLoading').style.display = 'none';
+    showToast('ArXiv search failed: ' + e.message, 'err');
+    addLog('warn', 'ArXiv error: ' + e.message);
+  }
+}
+
+// Called inline from finding cards
+function findArxivForFinding(title, cveId, containerEl) {
+  const query = cveId && cveId !== '—' ? cveId : title;
+  document.getElementById('arxivQuery').value = query;
+  // Switch to arxiv tab
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-arxiv').classList.add('active');
+  const tabs = document.querySelectorAll('.tab');
+  tabs.forEach(t => { if (t.textContent.includes('ArXiv')) t.classList.add('active'); });
+  searchArxiv(query);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  EXCALIDRAW DIAGRAM
+// ══════════════════════════════════════════════════════════════
+let _lastDiagramData = null;
+
+async function generateDiagram() {
+  if (!_scanData) { showToast('Run a scan first', 'err'); return; }
+  const canvas = document.getElementById('diagramCanvas');
+  canvas.innerHTML = '<div class="empty" style="margin-top:6rem"><span class="spin">⟳</span> Hermes generating diagram…</div>';
+  document.getElementById('diagramDesc').style.display = 'none';
+  addLog('info', 'Generating Excalidraw security diagram…');
+  try {
+    const r = await fetch('/api/diagram', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({
+      domain: _scanData.domain,
+      ports: _findings.filter(f=>f.port&&f.port!=='—').map(f=>({port:f.port.split('/')[0],service:f.port.split('/')[1]||'',version:''})),
+      findings: _findings,
+      score: _scanData.score,
+      is_https: _scanData.isHttps
+    })});
+    if (!r.ok) throw new Error('API ' + r.status);
+    const d = await r.json();
+    _lastDiagramData = d;
+    // Description
+    if (d.description) {
+      document.getElementById('diagramDesc').style.display = 'block';
+      document.getElementById('diagramDesc').innerHTML = `🤖 <strong>Hermes Analysis:</strong> ${d.description}`;
+    }
+    // Render SVG diagram client-side from scan data
+    renderDiagramSVG(_scanData, _findings);
+    addLog('ok', `Diagram generated — ${d.element_count} elements, Excalidraw JSON ready`);
+    showToast('✓ Diagram ready — use Export buttons to download', 'ok');
+  } catch(e) {
+    canvas.innerHTML = `<div class="empty" style="margin-top:6rem;color:var(--red)">Diagram error: ${e.message}</div>`;
+    addLog('warn', 'Diagram failed: ' + e.message);
+  }
+}
+
+function renderDiagramSVG(scanData, findings) {
+  var canvas = document.getElementById('diagramCanvas');
+  var score = scanData.score;
+  var isHttps = scanData.isHttps;
+  var domain = scanData.domain;
+  var scoreColor = score>=80?'#00875a':score>=60?'#ff991f':score>=40?'#ff7452':'#de350b';
+  var sslColor = isHttps ? '#00875a' : '#de350b';
+  var scoreLabel = score>=80?'SECURE':score>=60?'WARNING':score>=40?'AT RISK':'CRITICAL';
+  var crit = findings.filter(function(f){return f.level==='critical';});
+  var high = findings.filter(function(f){return f.level==='high';});
+  var med  = findings.filter(function(f){return f.level==='medium';});
+  var low  = findings.filter(function(f){return f.level==='low';});
+  var fwFill   = score>=70?'#e3fcef':'#ffebe6';
+  var fwStroke = score>=70?'#00875a':'#de350b';
+
+  // Build findings columns HTML separately (no nested template literals)
+  var levels = ['critical','high','medium','low'];
+  var levelColors = {
+    critical:['#ffebe6','#de350b'],
+    high:['#fff0ed','#ff7452'],
+    medium:['#fffae6','#ff991f'],
+    low:['#f0f5ff','#0066ff']
+  };
+  var findingCols = '';
+  for (var col=0; col<levels.length; col++) {
+    var level = levels[col];
+    var fc = levelColors[level];
+    var fill = fc[0], stroke = fc[1];
+    var x = 50 + col * 265;
+    var y = 320;
+    var flist = findings.filter(function(f){return f.level===level;}).slice(0,3);
+    findingCols += '<rect x="'+x+'" y="'+(y-20)+'" width="235" height="18" rx="3" fill="'+fill+'" stroke="'+stroke+'" stroke-width="1"/>';
+    findingCols += '<text x="'+(x+8)+'" y="'+(y-7)+'" font-family="IBM Plex Sans,sans-serif" font-size="10" font-weight="700" fill="'+stroke+'">'+level.toUpperCase()+' ('+flist.length+')</text>';
+    for (var i=0; i<flist.length; i++) {
+      var f = flist[i];
+      var fy = y + 8 + i*58;
+      var ftitle = (f.title||'').substring(0,30);
+      var fdesc  = (f.desc||'').substring(0,40);
+      findingCols += '<rect x="'+x+'" y="'+fy+'" width="235" height="50" rx="6" fill="'+fill+'" stroke="'+stroke+'" stroke-width="1.5"/>';
+      findingCols += '<text x="'+(x+8)+'" y="'+(fy+17)+'" font-family="IBM Plex Sans,sans-serif" font-size="9.5" font-weight="600" fill="'+stroke+'">'+ftitle+'</text>';
+      findingCols += '<text x="'+(x+8)+'" y="'+(fy+32)+'" font-family="IBM Plex Mono,monospace" font-size="8.5" fill="#6b7a90">CVSS '+(f.cvss||'—')+'  '+(f.port||'—')+'</text>';
+      findingCols += '<text x="'+(x+8)+'" y="'+(fy+45)+'" font-family="IBM Plex Sans,sans-serif" font-size="8" fill="#9aa5b4">'+fdesc+'</text>';
+    }
+  }
+
+  var svgHtml = '<svg viewBox="0 0 1100 620" xmlns="http://www.w3.org/2000/svg" id="diagramSVG" style="width:100%;height:100%;min-height:520px;background:#fafafa">'
+    + '<defs><filter id="shadow"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.1"/></filter>'
+    + '<marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#9aa5b4"/></marker></defs>'
+    // Title
+    + '<text x="50" y="35" font-family="IBM Plex Mono,monospace" font-size="13" fill="'+scoreColor+'" font-weight="700">⚕ Hermes Security Diagram — '+domain+'</text>'
+    + '<text x="50" y="52" font-family="IBM Plex Mono,monospace" font-size="10" fill="#9aa5b4">Score: '+score+'/100  |  SSL: '+(isHttps?'Valid':'MISSING')+'  |  C:'+crit.length+' H:'+high.length+' M:'+med.length+' L:'+low.length+'</text>'
+    // Internet cloud
+    + '<ellipse cx="120" cy="155" rx="85" ry="50" fill="#e8f4f8" stroke="#4a90d9" stroke-width="2" filter="url(#shadow)"/>'
+    + '<text x="120" y="150" text-anchor="middle" font-family="IBM Plex Sans,sans-serif" font-size="13" fill="#1a2332">🌐 Internet</text>'
+    + '<text x="120" y="167" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9" fill="#6b7a90">External traffic</text>'
+    + '<line x1="205" y1="155" x2="265" y2="155" stroke="#9aa5b4" stroke-width="2" marker-end="url(#arrow)"/>'
+    // Firewall
+    + '<rect x="265" y="125" width="150" height="60" rx="8" fill="'+fwFill+'" stroke="'+fwStroke+'" stroke-width="2.5" filter="url(#shadow)"/>'
+    + '<text x="340" y="153" text-anchor="middle" font-family="IBM Plex Sans,sans-serif" font-size="13" font-weight="700" fill="'+fwStroke+'">🛡 Firewall</text>'
+    + '<text x="340" y="171" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9" fill="#6b7a90">Score '+score+'/100</text>'
+    + '<line x1="415" y1="155" x2="475" y2="155" stroke="#9aa5b4" stroke-width="2" marker-end="url(#arrow)"/>'
+    // Server
+    + '<rect x="475" y="110" width="190" height="90" rx="8" fill="#f0f5ff" stroke="#0066ff" stroke-width="2.5" filter="url(#shadow)"/>'
+    + '<text x="570" y="143" text-anchor="middle" font-family="IBM Plex Sans,sans-serif" font-size="13" font-weight="700" fill="#0066ff">🖥 '+domain.substring(0,22)+'</text>'
+    + '<text x="570" y="163" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="'+sslColor+'">SSL '+(isHttps?'✓ HTTPS':'✗ Missing')+'</text>'
+    + '<text x="570" y="180" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9" fill="#9aa5b4">'+findings.length+' findings</text>'
+    // Score circle
+    + '<circle cx="750" cy="150" r="55" fill="white" stroke="'+scoreColor+'" stroke-width="3" filter="url(#shadow)"/>'
+    + '<text x="750" y="143" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="26" font-weight="700" fill="'+scoreColor+'">'+score+'</text>'
+    + '<text x="750" y="160" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9" fill="#6b7a90">/100</text>'
+    + '<text x="750" y="176" text-anchor="middle" font-family="IBM Plex Sans,sans-serif" font-size="9" font-weight="700" fill="'+scoreColor+'">'+scoreLabel+'</text>'
+    + '<line x1="665" y1="155" x2="695" y2="155" stroke="'+scoreColor+'" stroke-width="1.5" stroke-dasharray="4,3"/>'
+    // Findings columns
+    + findingCols
+    // Footer
+    + '<line x1="0" y1="610" x2="1100" y2="610" stroke="#e2e6ed" stroke-width="1"/>'
+    + '<text x="50" y="618" font-family="IBM Plex Mono,monospace" font-size="8" fill="#9aa5b4">⚕ HERMES SECURITY AGENT — NOUS RESEARCH HACKATHON 2025</text>'
+    + '</svg>';
+
+  canvas.innerHTML = svgHtml;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  🧬 RECON LAB
+// ══════════════════════════════════════════════════════════════
+
+let _rlHistory = [];
+let _rlData = {};
+
+function rlGetDomain() {
+  let d = document.getElementById('rlDomain').value.trim();
+  if (!d && _scanData) d = _scanData.domain;
+  if (!d) { showToast('Enter a domain', 'err'); return null; }
+  return d.replace(/^https?:\/\//,'').split('/')[0];
+}
+
+function rlShowLoading(msg) {
+  const el = document.getElementById('rlLoading');
+  document.getElementById('rlLoadingMsg').textContent = msg || 'Hermes running intelligence sweep...';
+  el.style.display = 'flex';
+}
+function rlHideLoading() {
+  document.getElementById('rlLoading').style.display = 'none';
+}
+
+function rlShowResults() {
+  document.getElementById('rlStats').style.display = 'grid';
+  document.getElementById('rlMainGrid').style.display = 'grid';
+  document.getElementById('rlHistoryWrap').style.display = 'block';
+}
+
+function rlUpdateStats(score, subs, dnsCount, sslDays) {
+  const scoreEl = document.getElementById('rlStatScore');
+  const scoreColor = score >= 80 ? 'var(--green)' : score >= 60 ? 'var(--yellow)' : score >= 40 ? 'var(--orange)' : 'var(--red)';
+  scoreEl.textContent = score !== null && score !== undefined ? score + '/100' : '—';
+  scoreEl.style.color = scoreColor;
+  document.getElementById('rlStatSubs').textContent = subs !== null ? subs : '—';
+  document.getElementById('rlStatDNS').textContent = dnsCount !== null ? dnsCount : '—';
+  const daysEl = document.getElementById('rlStatSSL');
+  daysEl.textContent = sslDays !== null ? sslDays : '—';
+  daysEl.style.color = sslDays < 0 ? 'var(--red)' : sslDays < 30 ? 'var(--yellow)' : 'var(--green)';
+}
+
+function rlRenderWhois(whois, summary) {
+  if (!whois) return;
+  document.getElementById('rlRegistrar').textContent = whois.registrar || '—';
+  document.getElementById('rlCreated').textContent = whois.created || '—';
+  document.getElementById('rlExpires').textContent = whois.expires || '—';
+  document.getElementById('rlUpdated').textContent = whois.updated || '—';
+  document.getElementById('rlCountry').textContent = whois.country || '—';
+  const statusEl = document.getElementById('rlStatus');
+  statusEl.innerHTML = whois.status
+    ? `<span class="rl-badge rl-badge-${whois.status === 'active' ? 'ok' : 'warn'}">${whois.status.toUpperCase()}</span>`
+    : '—';
+  document.getElementById('rlWhoisSummary').textContent = summary || '—';
+}
+
+function rlRenderTechStack(tech) {
+  if (!tech) return;
+  document.getElementById('rlCMS').innerHTML = tech.cms && tech.cms !== 'Unknown'
+    ? `<span class="rl-badge rl-badge-blue">${tech.cms}</span>` : '<span style="color:var(--muted)">Unknown</span>';
+  document.getElementById('rlServer').textContent = tech.server || '—';
+  document.getElementById('rlCDN').textContent = [tech.cdn, tech.security?.join(', ')].filter(Boolean).join(' / ') || '—';
+  document.getElementById('rlHosting').textContent = tech.hosting || '—';
+  const chips = (arr) => (arr || []).map(t => `<span class="rl-tech-chip">${t}</span>`).join('') || '<span style="color:var(--muted);font-size:0.68rem">—</span>';
+  document.getElementById('rlFrontend').innerHTML = chips(tech.frontend);
+  document.getElementById('rlBackend').innerHTML = chips(tech.backend);
+  document.getElementById('rlAnalytics').innerHTML = chips(tech.analytics);
+  document.getElementById('rlSecurity').innerHTML = chips(tech.security);
+}
+
+function rlRenderDNS(dns) {
+  const tbody = document.querySelector('#rlDNSTable tbody');
+  if (!dns || !Object.keys(dns).length) {
+    tbody.innerHTML = '<tr><td colspan="2" style="color:var(--muted)">No DNS records</td></tr>';
+    return;
+  }
+  tbody.innerHTML = Object.entries(dns)
+    .flatMap(([type, vals]) => vals.map((v, i) => `<tr><td>${i === 0 ? type : ''}</td><td>${v}</td></tr>`))
+    .join('');
+}
+
+function rlRenderSSL(ssl) {
+  if (!ssl || ssl.error) {
+    document.getElementById('rlSSLIssuer').innerHTML = `<span style="color:var(--red)">${ssl?.error || 'N/A'}</span>`;
+    return;
+  }
+  document.getElementById('rlSSLIssuer').textContent = ssl.issuer?.organizationName || '—';
+  document.getElementById('rlSSLSubject').textContent = ssl.subject?.commonName || '—';
+  document.getElementById('rlSSLExpires').textContent = ssl.notAfter || '—';
+  const days = ssl.days_left ?? -1;
+  const daysColor = days < 0 ? 'var(--red)' : days < 30 ? 'var(--yellow)' : 'var(--green)';
+  document.getElementById('rlSSLDays').innerHTML = `<span style="color:${daysColor};font-weight:700">${days >= 0 ? days + ' days' : 'EXPIRED'}</span>`;
+  document.getElementById('rlSSLVersion').textContent = ssl.version || '—';
+  document.getElementById('rlSSLSAN').textContent = ssl.san?.length || 0;
+  document.getElementById('rlSSLSANList').innerHTML = (ssl.san || []).slice(0, 10)
+    .map(s => `<span class="rl-tech-chip" style="font-size:0.62rem">${s}</span>`).join('');
+}
+
+function rlRenderSubdomains(subs) {
+  document.getElementById('rlSubCount').textContent = `(${subs.length} discovered)`;
+  document.getElementById('rlSubList').innerHTML = subs.length
+    ? subs.map(s => `<div class="rl-sub-item" onclick="document.getElementById('rlDomain').value='${s}';rlRunAll()">${s}</div>`).join('')
+    : '<div class="rl-empty">No subdomains discovered via crt.sh</div>';
+}
+
+function rlRenderAI(ai) {
+  if (!ai) return;
+  const riskClass = ai.risk_level === 'HIGH' ? 'err' : ai.risk_level === 'MEDIUM' ? 'warn' : '';
+  const summary = document.getElementById('rlAISummary');
+  summary.className = `rl-threat-box ${riskClass}`;
+  summary.innerHTML = `<strong style="text-transform:uppercase;letter-spacing:0.05em">${ai.risk_level || '?'} Risk — Exposure ${ai.exposure_score || '?'}/100</strong><br>${ai.summary || '—'}`;
+  document.getElementById('rlAIFindings').innerHTML = (ai.key_findings || [])
+    .map(f => `<div class="rl-rec-item"><div class="rl-rec-num">!</div>${f}</div>`).join('') || '—';
+  document.getElementById('rlAIRecs').innerHTML = (ai.recommendations || [])
+    .map((r, i) => `<div class="rl-rec-item"><div class="rl-rec-num">${i+1}</div>${r}</div>`).join('') || '—';
+}
+
+function rlAddHistory(domain, score, riskLevel) {
+  _rlHistory = _rlHistory.filter(h => h.domain !== domain);
+  _rlHistory.unshift({ domain, score, riskLevel, ts: new Date().toLocaleTimeString() });
+  _rlHistory = _rlHistory.slice(0, 8);
+  const el = document.getElementById('rlHistory');
+  el.innerHTML = _rlHistory.map(h => {
+    const color = h.score >= 80 ? 'var(--green)' : h.score >= 60 ? 'var(--yellow)' : h.score >= 40 ? 'var(--orange)' : 'var(--red)';
+    return `<div class="rl-history-item" onclick="document.getElementById('rlDomain').value='${h.domain}';rlRunAll()">
+      <span style="flex:1;font-family:'IBM Plex Mono',monospace;font-size:0.75rem">${h.domain}</span>
+      <span class="rl-score-pill" style="background:${color}22;color:${color};border:1px solid ${color}44">${h.riskLevel || '?'}</span>
+      <span style="font-size:0.65rem;color:var(--muted)">${h.ts}</span>
+    </div>`;
+  }).join('');
+}
+
+async function rlRunWhois() {
+  const domain = rlGetDomain();
+  if (!domain) return;
+  document.getElementById('rlDomain').value = domain;
+  rlShowLoading(`Hermes fetching WHOIS + tech stack for ${domain}...`);
+  rlShowResults();
+  addLog('info', `Recon Lab: WHOIS + tech stack — ${domain}`);
+  try {
+    const r = await fetch('/api/whois', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({domain}) });
+    if (!r.ok) throw new Error('API ' + r.status);
+    const d = await r.json();
+    rlRenderWhois(d.whois, d.summary);
+    rlRenderTechStack(d.tech_stack);
+    rlHideLoading();
+    addLog('ok', `WHOIS: ${d.whois?.registrar || '?'} | ${d.whois?.country || '?'} | CMS: ${d.tech_stack?.cms || '?'}`);
+  } catch(e) {
+    rlHideLoading();
+    showToast('WHOIS failed: ' + e.message, 'err');
+    addLog('warn', 'Recon Lab WHOIS error: ' + e.message);
+  }
+}
+
+async function rlRunDomainIntel() {
+  const domain = rlGetDomain();
+  if (!domain) return;
+  document.getElementById('rlDomain').value = domain;
+  rlShowLoading(`Hermes scanning DNS, SSL, subdomains for ${domain}...`);
+  rlShowResults();
+  addLog('info', `Recon Lab: DNS/SSL/subdomains — ${domain}`);
+  try {
+    const r = await fetch('/api/domain-intel', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({domain}) });
+    if (!r.ok) throw new Error('API ' + r.status);
+    const d = await r.json();
+    rlRenderDNS(d.dns);
+    rlRenderSSL(d.ssl_cert);
+    rlRenderSubdomains(d.subdomains || []);
+    rlRenderAI(d.ai_analysis);
+    const dnsCount = Object.keys(d.dns || {}).length;
+    const sslDays = d.ssl_cert?.days_left ?? null;
+    rlUpdateStats(d.ai_analysis?.exposure_score ?? null, (d.subdomains||[]).length, dnsCount, sslDays);
+    rlHideLoading();
+    addLog('ok', `Domain Intel: ${(d.subdomains||[]).length} subdomains, ${dnsCount} DNS records, SSL ${sslDays ?? 'N/A'} days`);
+  } catch(e) {
+    rlHideLoading();
+    showToast('Domain Intel failed: ' + e.message, 'err');
+    addLog('warn', 'Recon Lab Domain Intel error: ' + e.message);
+  }
+}
+
+async function rlRunAll() {
+  const domain = rlGetDomain();
+  if (!domain) return;
+  document.getElementById('rlDomain').value = domain;
+  const btn = document.getElementById('rlRunBtn');
+  btn.disabled = true; btn.textContent = '⟳ Running...';
+  rlShowLoading(`Hermes running full intelligence sweep on ${domain}...`);
+  rlShowResults();
+  addLog('info', `Recon Lab: FULL recon on ${domain}...`);
+
+  let whoisData = null, intelData = null, whoisError = null, intelError = null;
+
+  // Run both in parallel
+  const [whoisRes, intelRes] = await Promise.allSettled([
+    fetch('/api/whois', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({domain}) }).then(r => r.ok ? r.json() : Promise.reject('WHOIS API ' + r.status)),
+    fetch('/api/domain-intel', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({domain}) }).then(r => r.ok ? r.json() : Promise.reject('Intel API ' + r.status))
+  ]);
+
+  if (whoisRes.status === 'fulfilled') { whoisData = whoisRes.value; }
+  else { whoisError = whoisRes.reason; addLog('warn', 'WHOIS failed: ' + whoisError); }
+
+  if (intelRes.status === 'fulfilled') { intelData = intelRes.value; }
+  else { intelError = intelRes.reason; addLog('warn', 'Domain Intel failed: ' + intelError); }
+
+  // Render all available data
+  if (whoisData) {
+    rlRenderWhois(whoisData.whois, whoisData.summary);
+    rlRenderTechStack(whoisData.tech_stack);
+  }
+  if (intelData) {
+    rlRenderDNS(intelData.dns);
+    rlRenderSSL(intelData.ssl_cert);
+    rlRenderSubdomains(intelData.subdomains || []);
+    rlRenderAI(intelData.ai_analysis);
+    const ai = intelData.ai_analysis || {};
+    const dnsCount = Object.keys(intelData.dns || {}).length;
+    const sslDays = intelData.ssl_cert?.days_left ?? null;
+    const score = _scanData?.domain === domain ? _scanData.score : (ai.exposure_score ?? null);
+    rlUpdateStats(score, (intelData.subdomains||[]).length, dnsCount, sslDays);
+    rlAddHistory(domain, score, ai.risk_level || '?');
+  }
+
+  rlHideLoading();
+  btn.disabled = false; btn.textContent = '🧬 Full Recon';
+  addLog('ok', `Recon Lab complete — ${domain}`);
+  showToast('✓ Recon complete!', 'ok');
+}
+
+// Auto-fill Recon Lab when tab is opened after a scan
+document.addEventListener('scanComplete', function() {
+  if (_scanData && _scanData.domain) {
+    const el = document.getElementById('rlDomain');
+    if (el && !el.value) el.value = _scanData.domain;
+  }
+});
+
+function hermesArxivFinding(btn) {
+  var title = card ? (card.querySelector('.finding-title') || {}).textContent || '' : '';
+  var cveEl = card ? card.querySelector('.cve-link') : null;
+  var query = cveEl ? cveEl.textContent.trim() : title.trim();
+  document.getElementById('arxivQuery').value = query;
+  document.querySelectorAll('.tab-content').forEach(function(t){t.classList.remove('active');});
+  document.querySelectorAll('.tab').forEach(function(t){
+    if(t.textContent.indexOf('ArXiv')!==-1){t.classList.add('active');}else{t.classList.remove('active');}
+  });
+  document.getElementById('tab-arxiv').classList.add('active');
+  searchArxiv(query);
+}
+
+// Auto-fill Domain Intel input when scan completes
+document.addEventListener('scanComplete', function(){
+  if (_scanData && _scanData.domain) {
+    var el = document.getElementById('diDomain');
+    if (el && !el.value) el.value = _scanData.domain;
+  }
+});
+
+
+
+// ══════════════════════════════════════════════════════════════
+//  🛡 WALLET GUARD
+// ══════════════════════════════════════════════════════════════
+
+const ETHERSCAN_API = 'https://api.etherscan.io/v2/api';
+const ETHERSCAN_KEY = 'VCJAD8C42R9FD6V7MN4UHU4UIFN39PZRDY';
+
+function wgSwitchTab(id, el) {
+  document.querySelectorAll('.wg-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.wg-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('wgs-' + id).classList.add('active');
+  el.classList.add('active');
+}
+
+function wgUpdateScore(score) {
+  const color = score >= 80 ? 'var(--green)' : score >= 60 ? 'var(--yellow)' : score >= 40 ? 'var(--orange)' : 'var(--red)';
+  const label = score >= 80 ? 'LOW RISK ✅' : score >= 60 ? 'MEDIUM RISK ⚠️' : score >= 40 ? 'HIGH RISK 🚨' : 'CRITICAL 🆘';
+  const circ = 2 * Math.PI * 55;
+  const offset = circ - (score / 100) * circ;
+  const ring = document.getElementById('wgRingFill');
+  ring.style.stroke = color;
+  ring.style.strokeDasharray = circ;
+  ring.style.strokeDashoffset = offset;
+  document.getElementById('wgScoreNum').textContent = score;
+  document.getElementById('wgScoreNum').style.color = color;
+  const badge = document.getElementById('wgRiskBadge');
+  badge.textContent = label;
+  badge.style.background = color.replace('var(','').replace(')','') === color
+    ? color + '22' : `var(--${score>=80?'green':score>=60?'yellow':score>=40?'orange':'red'}-bg)`;
+  badge.style.color = color;
+  badge.style.border = `1px solid ${color}`;
+}
+
+function wgShortAddr(addr) {
+  if (!addr || addr.length < 10) return addr;
+  return addr.slice(0,6) + '...' + addr.slice(-4);
+}
+
+function wgFormatDate(ts) {
+  if (!ts) return '—';
+  return new Date(parseInt(ts) * 1000).toLocaleDateString('tr-TR');
+}
+
+function wgFormatETH(wei) {
+  if (!wei) return '0';
+  const eth = parseFloat(wei) / 1e18;
+  return eth.toFixed(4);
+}
+
+async function wgAnalyze() {
+  let addr = document.getElementById('wgAddress').value.trim();
+  if (!addr) { showToast('Enter wallet address', 'err'); return; }
+
+  const btn = document.getElementById('wgBtn');
+  btn.disabled = true; btn.textContent = '⟳ Analyzing...';
+  const loading = document.getElementById('wgLoading');
+  loading.style.display = 'flex';
+  document.getElementById('wgTabBar').style.display = 'flex';
+
+  addLog('info', `Wallet Guard: analyzing ${addr}...`);
+
+  // Use Cloudflare Ethereum JSON-RPC (no CORS issues, no API key)
+  const ETH_RPC = 'https://eth.llamarpc.com';
+  let balance = null, txList = [], tokenList = [], nftList = [];
+  let txCount = 0, firstTx = null, lastTx = null;
+
+  // 1. ETH Balance via Etherscan V2
+  try {
+    document.getElementById('wgLoadingMsg').textContent = 'Fetching ETH balance...';
+    const balRes = await fetch(`${ETHERSCAN_API}?module=account&action=balance&chainid=1&address=${addr}&apikey=${ETHERSCAN_KEY}`, {signal: AbortSignal.timeout(8000)});
+    const balData = await balRes.json();
+    if (balData.status === '1' && balData.result) {
+      balance = balData.result;
+    }
+  } catch(e) { addLog('warn', 'Balance fetch failed: ' + e.message); }
+
+  // 2b. First TX date — separate call with sort=asc to get wallet creation date
+  try {
+    const firstTxRes = await fetch(`${ETHERSCAN_API}?module=account&action=txlist&chainid=1&address=${addr}&startblock=0&endblock=99999999&page=1&offset=1&sort=asc&apikey=${ETHERSCAN_KEY}`, {signal: AbortSignal.timeout(8000)});
+    const firstTxData = await firstTxRes.json();
+    if (firstTxData.status === '1' && firstTxData.result?.length) {
+      firstTx = firstTxData.result[0].timeStamp;
+    }
+  } catch(e) {}
+
+  // 3. TX history via Etherscan (may fail due to CORS — graceful fallback)
+  try {
+    document.getElementById('wgLoadingMsg').textContent = 'Fetching transaction history...';
+    const txRes = await fetch(`${ETHERSCAN_API}?module=account&action=txlist&chainid=1&address=${addr}&startblock=0&endblock=99999999&page=1&offset=20&sort=desc&apikey=${ETHERSCAN_KEY}`, {signal: AbortSignal.timeout(8000)});
+    const txData = await txRes.json();
+    if (txData.status === '1' && txData.result) {
+      txList = txData.result;
+      if (txList.length) { lastTx = txList[0].timeStamp; if (!firstTx) firstTx = txList[txList.length-1].timeStamp; }
+    }
+  } catch(e) { addLog('warn', 'TX history unavailable (CORS/rate-limit) — proceeding with RPC data'); }
+
+  // 4. ERC-20 tokens via Etherscan (current holdings + fallback to tx history)
+  try {
+    document.getElementById('wgLoadingMsg').textContent = 'Fetching token list...';
+    // Primary: current token balances (addresstokenbalance)
+    let gotTokens = false;
+    try {
+      const tokBalRes = await fetch(`${ETHERSCAN_API}?module=account&action=addresstokenbalance&address=${addr}&page=1&offset=50&apikey=${ETHERSCAN_KEY}`, {signal: AbortSignal.timeout(8000)});
+      const tokBalData = await tokBalRes.json();
+      if (tokBalData.status === '1' && Array.isArray(tokBalData.result) && tokBalData.result.length > 0) {
+        tokenList = tokBalData.result.slice(0, 12).map(t => ({
+          symbol: t.TokenSymbol || t.tokenSymbol || '?',
+          name: t.TokenName || t.tokenName || 'Unknown',
+          contract: t.TokenAddress || t.contractAddress || ''
+        }));
+        gotTokens = true;
+      }
+    } catch(e2) {}
+    // Fallback: transfer history
+    if (!gotTokens) {
+      const tokRes = await fetch(`${ETHERSCAN_API}?module=account&action=tokentx&chainid=1&address=${addr}&page=1&offset=50&sort=desc&apikey=${ETHERSCAN_KEY}`, {signal: AbortSignal.timeout(8000)});
+      const tokData = await tokRes.json();
+      if (tokData.status === '1' && tokData.result) {
+        const seen = {};
+        tokData.result.forEach(t => { if (!seen[t.contractAddress]) seen[t.contractAddress] = {symbol:t.tokenSymbol,name:t.tokenName,contract:t.contractAddress}; });
+        tokenList = Object.values(seen).slice(0, 12);
+      }
+    }
+  } catch(e) { addLog('warn', 'Token fetch failed'); }
+
+  // 5. NFT via Etherscan
+  try {
+    const nftRes = await fetch(`${ETHERSCAN_API}?module=account&action=tokennfttx&chainid=1&address=${addr}&page=1&offset=20&sort=desc&apikey=${ETHERSCAN_KEY}`, {signal: AbortSignal.timeout(8000)});
+    const nftData = await nftRes.json();
+    if (nftData.status === '1' && nftData.result) {
+      const seen = {};
+      nftData.result.forEach(n => { seen[n.contractAddress] = n.tokenName || 'NFT'; });
+      nftList = Object.entries(seen).map(([a, name]) => ({name, addr: a})).slice(0, 8);
+    }
+  } catch(e) {}
+
+  // 6. Hermes AI Analysis — /api/chat üzerinden gerçek veri analizi
+  document.getElementById('wgLoadingMsg').textContent = 'Hermes-4-405B running deep analysis...';
+  const ethBal = balance ? wgFormatETH(balance) : 'unknown';
+  const walletAge = firstTx ? Math.floor((Date.now()/1000 - parseInt(firstTx)) / 86400) : 0;
+
+  let aiResult = null;
+  try {
+    const r = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        message: `You are Hermes-4-405B blockchain security analyst. Analyze this Ethereum wallet with REAL data.
+Address: ${addr}
+ETH Balance: ${ethBal} ETH
+Nonce: ${txCount}
+Wallet Age: ${walletAge} days
+Tokens: ${tokenList.map(t=>t.symbol).join(', ')||'none'}
+NFTs: ${nftList.map(n=>n.name).join(', ')||'none'}
+Recent TXs: ${txList.length ? JSON.stringify(txList.slice(0,5).map(t=>({dir:t.to?.toLowerCase()===addr.toLowerCase()?'IN':'OUT',val:wgFormatETH(t.value),date:wgFormatDate(t.timeStamp),status:t.isError==='0'?'ok':'FAILED'}))) : 'none'}
+Respond ONLY with JSON (no markdown): {"risk_score":0-100,"risk_level":"LOW|MEDIUM|HIGH|CRITICAL","summary":"3 sentence analysis","flags":[{"type":"ok|warn|danger","text":"finding"}],"security_checks":[{"name":"check","status":"ok|warn|fail","detail":"detail"}],"risk_factors":["factor"],"recommendations":["rec"],"wallet_type":"EOA|DeFi Trader|HODLer|Inactive","activity_pattern":"pattern"}`,
+        history: []
+      })
+    });
+    if (r.ok) {
+      const d = await r.json();
+      if (d.reply) {
+        let raw = d.reply.split('\n\n⏳')[0].trim().replace(/```json|```/g,'').trim();
+        const s = raw.indexOf('{'), e = raw.lastIndexOf('}');
+        if (s !== -1 && e !== -1) {
+          try { aiResult = JSON.parse(raw.slice(s,e+1)); } catch(pe) {}
+        }
+        if (aiResult) addLog('ok', `Hermes analysis: ${aiResult.wallet_type} — Risk: ${aiResult.risk_level}`);
+        else addLog('warn', 'Hermes AI parse failed');
+      } else {
+        addLog('warn', 'Wallet analyze API: ' + (d.error || 'No reply'));
+      }
+    } else {
+      addLog('warn', 'Wallet analyze API HTTP ' + r.status);
+    }
+  } catch(e) {
+    addLog('warn', 'Hermes wallet analyze failed: ' + e.message);
+  }
+
+    // ── RENDER ──
+  loading.style.display = 'none';
+  btn.disabled = false; btn.textContent = '🛡 Analyze';
+
+  // Score
+  const score = aiResult?.risk_score ?? 50;
+  wgUpdateScore(score);
+  document.getElementById('wgScoreSub').textContent = 
+    (aiResult?.wallet_type || 'Ethereum Wallet') + 
+    (aiResult?.activity_pattern ? ' · ' + aiResult.activity_pattern : '');
+
+  // Stats
+  document.getElementById('wgStatBal').textContent = ethBal + ' ETH';
+  document.getElementById('wgStatTx').textContent = txCount || txList.length || '—';
+  document.getElementById('wgStatTokens').textContent = tokenList.length > 0 ? tokenList.length : '0';
+  document.getElementById('wgStatAge').textContent = walletAge ? walletAge + ' days' : '—';
+
+  // Address info
+  document.getElementById('wgAddrDisplay').textContent = addr;
+  document.getElementById('wgAddrType').textContent = aiResult?.wallet_type || 'EOA';
+  document.getElementById('wgFirstTx').textContent = wgFormatDate(firstTx);
+  document.getElementById('wgLastTx').textContent = wgFormatDate(lastTx);
+  const ethLink = document.getElementById('wgEtherscanLink');
+  ethLink.href = `https://etherscan.io/address/${addr}`;
+
+  // AI Summary
+  const aiBox = document.getElementById('wgAISummary');
+  const riskClass = score >= 80 ? '' : score >= 60 ? 'warn' : 'danger';
+  aiBox.className = 'wg-ai-box ' + riskClass;
+  aiBox.textContent = aiResult?.summary || 'Hermes AI analysis complete.';
+
+  // Flags
+  document.getElementById('wgAIFlags').innerHTML = (aiResult?.flags || [])
+    .map(f => `<div class="wg-flag wg-flag-${f.type}">
+      <span>${f.type==='ok'?'✓':f.type==='warn'?'⚠':f.type==='danger'?'✗':'ℹ'}</span>
+      <span>${f.text}</span>
+    </div>`).join('');
+
+  // TX Table
+  document.getElementById('wgTxCount').textContent = `(${txList.length} shown)`;
+  document.getElementById('wgTxBody').innerHTML = txList.length
+    ? txList.map(tx => {
+        const isIn = tx.to?.toLowerCase() === addr.toLowerCase();
+        const val = wgFormatETH(tx.value);
+        const status = tx.isError === '0' ? '<span style="color:var(--green)">✓</span>' : '<span style="color:var(--red)">✗</span>';
+        return `<tr>
+          <td><a href="https://etherscan.io/tx/${tx.hash}" target="_blank" style="color:var(--blue)">${tx.hash.slice(0,10)}…</a></td>
+          <td class="${isIn?'wg-tx-in':'wg-tx-out'}">${isIn?'↓ IN':'↑ OUT'}</td>
+          <td style="font-weight:600">${val} ETH</td>
+          <td style="color:var(--muted)">${wgShortAddr(isIn?tx.from:tx.to)}</td>
+          <td>${wgFormatDate(tx.timeStamp)}</td>
+          <td>${status}</td>
+        </tr>`;
+      }).join('')
+    : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:2rem">No transactions found</td></tr>';
+
+  // Tokens
+  document.getElementById('wgTokenGrid').innerHTML = tokenList.length
+    ? tokenList.map(t => `
+      <div class="wg-token-card">
+        <div class="wg-token-sym">${t.symbol}</div>
+        <div class="wg-token-name">${t.name}</div>
+        <div class="wg-token-bal">—</div>
+        <div class="wg-token-usd"><a href="https://etherscan.io/token/${t.contract}" target="_blank" style="color:var(--blue);font-size:0.6rem">Etherscan →</a></div>
+      </div>`).join('')
+    : '<div style="grid-column:span 3;text-align:center;color:var(--muted);padding:2rem">No ERC-20 tokens found</div>';
+
+  // NFTs
+  document.getElementById('wgNFTCount').textContent = `(${nftList.length} collections)`;
+  document.getElementById('wgNFTList').innerHTML = nftList.length
+    ? '<div class="rl-tech-grid">' + nftList.map(n => `<span class="rl-tech-chip">🖼 ${n.name}</span>`).join('') + '</div>'
+    : '<span style="color:var(--muted)">No NFTs found</span>';
+
+  // Security checks
+  const checks = aiResult?.security_checks || [
+    { name: 'Address Format', status: addr.startsWith('0x') && addr.length === 42 ? 'ok' : 'fail', detail: 'EIP-55 address format' },
+    { name: 'Transaction History', status: txList.length > 0 ? 'ok' : 'warn', detail: txList.length + ' transactions' },
+    { name: 'ETH Balancesi', status: parseFloat(ethBal) > 0 ? 'ok' : 'warn', detail: ethBal + ' ETH' },
+    { name: 'Token Diversity', status: tokenList.length > 0 ? 'ok' : 'info', detail: tokenList.length + ' token' },
+  ];
+  document.getElementById('wgCheckList').innerHTML = checks
+    .map(c => `<div class="wg-check-row">
+      <div class="wg-check-icon wg-ci-${c.status}">${c.status==='ok'?'✓':c.status==='warn'?'!':c.status==='fail'?'✗':'i'}</div>
+      <span style="flex:1;font-weight:500">${c.name}</span>
+      <span style="font-size:0.68rem;color:var(--muted)">${c.detail||''}</span>
+    </div>`).join('');
+
+  // Risk factors
+  document.getElementById('wgRiskFactors').innerHTML = (aiResult?.risk_factors || ['Insufficient data']).length
+    ? (aiResult?.risk_factors || ['Insufficient data'])
+        .map(f => `<div class="wg-flag wg-flag-warn" style="margin-bottom:0.4rem"><span>⚠</span><span>${f}</span></div>`).join('')
+    : '<div style="color:var(--green);font-size:0.78rem;padding:0.5rem">✓ Risk factor none detected</div>';
+
+  // Recommendations
+  document.getElementById('wgSecurityRecs').innerHTML = (aiResult?.recommendations || ['Manual review recommended']).length
+    ? (aiResult?.recommendations || ['Manual review recommended'])
+        .map((r, i) => `<div class="rl-rec-item"><div class="rl-rec-num">${i+1}</div>${r}</div>`).join('')
+    : '—';
+
+  addLog('ok', `Wallet Guard: ${addr.slice(0,10)}… → Skor: ${score}/100 ${aiResult?.risk_level||''}`);
+  showToast('✓ Wallet analysis complete!', 'ok');
+}
+
+
+function downloadDiagramSVG() {
+  var svgEl = document.getElementById('diagramSVG');
+  if (!svgEl) { showToast('Generate a diagram first', 'err'); return; }
+  var serializer = new XMLSerializer();
+  var svgStr = serializer.serializeToString(svgEl);
+  var blob = new Blob([svgStr], {type: 'image/svg+xml'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'hermes-diagram-' + (_scanData ? _scanData.domain : 'export') + '.svg';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✓ SVG exported!', 'ok');
+  addLog('ok', 'Diagram SVG downloaded');
+}
+
+function downloadExcalidraw() {
+  if (!_scanData) { showToast('Generate a diagram first', 'err'); return; }
+  var score = _scanData.score;
+  var domain = _scanData.domain;
+  var scoreColor = score>=80?'#00875a':score>=60?'#ff991f':score>=40?'#ff7452':'#de350b';
+  var elements = [
+    {id:'el1',type:'ellipse',x:50,y:120,width:170,height:100,strokeColor:'#4a90d9',backgroundColor:'#e8f4f8',fillStyle:'solid',strokeWidth:2,roughness:1,opacity:100,angle:0,version:1,versionNonce:1,isDeleted:false,groupIds:[],boundElements:null,updated:1,link:null,locked:false},
+    {id:'tl1',type:'text',x:85,y:155,width:100,height:25,text:'🌐 Internet',fontSize:16,fontFamily:1,textAlign:'center',verticalAlign:'middle',strokeColor:'#1a2332',backgroundColor:'transparent',fillStyle:'solid',strokeWidth:1,roughness:1,opacity:100,angle:0,version:1,versionNonce:2,isDeleted:false,groupIds:[],boundElements:null,updated:1,link:null,locked:false},
+    {id:'el2',type:'rectangle',x:270,y:130,width:150,height:60,strokeColor:scoreColor,backgroundColor:'#fff0ed',fillStyle:'solid',strokeWidth:2,roughness:1,opacity:100,angle:0,version:1,versionNonce:3,isDeleted:false,groupIds:[],boundElements:null,updated:1,link:null,locked:false},
+    {id:'tl2',type:'text',x:285,y:153,width:120,height:20,text:'🛡 Firewall — '+score+'/100',fontSize:13,fontFamily:1,textAlign:'center',verticalAlign:'middle',strokeColor:scoreColor,backgroundColor:'transparent',fillStyle:'solid',strokeWidth:1,roughness:1,opacity:100,angle:0,version:1,versionNonce:4,isDeleted:false,groupIds:[],boundElements:null,updated:1,link:null,locked:false},
+    {id:'el3',type:'rectangle',x:470,y:110,width:190,height:90,strokeColor:'#0066ff',backgroundColor:'#f0f5ff',fillStyle:'solid',strokeWidth:2,roughness:1,opacity:100,angle:0,version:1,versionNonce:5,isDeleted:false,groupIds:[],boundElements:null,updated:1,link:null,locked:false},
+    {id:'tl3',type:'text',x:480,y:148,width:170,height:20,text:'🖥 '+domain,fontSize:13,fontFamily:1,textAlign:'center',verticalAlign:'middle',strokeColor:'#0066ff',backgroundColor:'transparent',fillStyle:'solid',strokeWidth:1,roughness:1,opacity:100,angle:0,version:1,versionNonce:6,isDeleted:false,groupIds:[],boundElements:null,updated:1,link:null,locked:false},
+    {id:'el4',type:'ellipse',x:700,y:100,width:110,height:110,strokeColor:scoreColor,backgroundColor:'#ffffff',fillStyle:'solid',strokeWidth:3,roughness:1,opacity:100,angle:0,version:1,versionNonce:7,isDeleted:false,groupIds:[],boundElements:null,updated:1,link:null,locked:false},
+    {id:'tl4',type:'text',x:710,y:148,width:90,height:20,text:score+'/100',fontSize:22,fontFamily:1,textAlign:'center',verticalAlign:'middle',strokeColor:scoreColor,backgroundColor:'transparent',fillStyle:'solid',strokeWidth:1,roughness:1,opacity:100,angle:0,version:1,versionNonce:8,isDeleted:false,groupIds:[],boundElements:null,updated:1,link:null,locked:false}
+  ];
+  var excalidrawData = {
+    type: 'excalidraw',
+    version: 2,
+    source: 'hermes-security',
+    elements: elements,
+    appState: { gridSize: null, viewBackgroundColor: '#fafafa' },
+    files: {}
+  };
+  var blob = new Blob([JSON.stringify(excalidrawData, null, 2)], {type: 'application/json'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'hermes-diagram-' + domain + '.excalidraw';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✓ Excalidraw exported!', 'ok');
+  addLog('ok', 'Excalidraw JSON downloaded');
+}
+
+function exportPDF(){
+  if(!_scanData){showToast('Run a scan first','err');return}
+  if(!window.jspdf){showToast('Loading PDF...','warn');setTimeout(exportPDF,1000);return}
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const{domain,score,isHttps,critCount,highCount,medCount,lowCount,elapsed,timestamp}=_scanData;
+  const W=210,H=297,M=16;let y=0;
+  const BG=[252,250,245],BG2=[245,242,235],BG3=[235,230,220];
+  const sc=score>=80?[0,130,75]:score>=60?[170,110,0]:score>=40?[190,70,15]:[170,15,15];
+  const scLabel=score>=80?'LOW RISK':score>=60?'MEDIUM RISK':score>=40?'HIGH RISK':'CRITICAL RISK';
+  const BLACK=[25,25,25],MUTED=[115,105,90],BORDER=[205,198,188];
+  doc.setFillColor(...BG);doc.rect(0,0,W,H,'F');
+  doc.setFillColor(...BG2);doc.rect(0,0,W,38,'F');
+  doc.setDrawColor(...BORDER);doc.setLineWidth(0.3);doc.line(0,38,W,38);
+  doc.setFillColor(...sc);doc.rect(0,0,5,H,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(17);doc.setTextColor(...BLACK);doc.text('HERMES SECURITY REPORT',22,16);
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...MUTED);
+  doc.text('AUTONOMOUS VULNERABILITY SCANNER  //  NOUS RESEARCH HACKATHON 2025',22,23);
+  doc.text('Generated: '+new Date(timestamp).toLocaleString()+'   |   '+domain,22,30);
+  doc.setFillColor(...sc);doc.roundedRect(W-M-40,10,40,11,2,2,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(255,255,255);
+  doc.setCharSpace(0);
+  doc.text('HERMES AGENT',W-M-20,16.5,'center');
+  y=46;
+  doc.setFillColor(...BG2);doc.roundedRect(M,y,W-M*2,36,2,2,'F');
+  doc.setDrawColor(...sc);doc.setLineWidth(0.8);doc.roundedRect(M,y,W-M*2,36,2,2,'S');
+  doc.setFillColor(...sc);doc.rect(M,y,5,36,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(30);doc.setTextColor(...sc);doc.text(score+'',M+12,y+24);
+  doc.setFontSize(9);doc.setTextColor(...MUTED);doc.text('/100',M+28,y+24);
+  doc.setFontSize(15);doc.setTextColor(...sc);doc.text(scLabel,M+44,y+17);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...BLACK);doc.text(domain,M+44,y+26);
+  doc.setFontSize(6.5);doc.setTextColor(...MUTED);doc.text('SSL: '+(isHttps?'Valid':'MISSING')+'   |   Scan Duration: '+elapsed+'s',M+44,y+33);
+  y+=44;
+  const stats=[{l:'CRITICAL',v:critCount,c:[170,15,15]},{l:'HIGH',v:highCount,c:[190,70,15]},{l:'MEDIUM',v:medCount,c:[170,110,0]},{l:'LOW',v:lowCount,c:[0,70,170]}];
+  const sw=(W-M*2-9)/4;
+  stats.forEach((s,i)=>{
+    const x=M+i*(sw+3);
+    doc.setFillColor(...BG2);doc.roundedRect(x,y,sw,22,2,2,'F');
+    doc.setDrawColor(...s.c);doc.setLineWidth(0.5);doc.roundedRect(x,y,sw,22,2,2,'S');
+    doc.setFillColor(...s.c);doc.roundedRect(x,y,sw,4,2,2,'F');doc.rect(x,y+2,sw,2,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(...s.c);doc.text(s.v+'',x+5,y+17);
+    doc.setFont('helvetica','normal');doc.setFontSize(5.5);doc.setTextColor(...MUTED);doc.text(s.l,x+5,y+21);
+  });
+  y+=30;
+  doc.setFillColor(...BG3);doc.rect(M,y,W-M*2,9,'F');
+  doc.setDrawColor(...BORDER);doc.setLineWidth(0.3);doc.rect(M,y,W-M*2,9,'S');
+  doc.setFillColor(...sc);doc.rect(M,y,4,9,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(...BLACK);doc.text('VULNERABILITY FINDINGS',M+8,y+6);
+  doc.setFont('helvetica','normal');doc.setFontSize(6);doc.setTextColor(...MUTED);doc.text(_findings.length+' items found',W-M-2,y+6,'right');
+  y+=13;
+  const lc={critical:[170,15,15],high:[190,70,15],medium:[170,110,0],low:[0,70,170],info:[90,70,150],good:[0,130,75]};
+  _findings.forEach(f=>{
+    if(y>272)return;
+    const fc=lc[f.level]||[100,100,100];
+    const rowH=f.desc?14:10;
+    doc.setFillColor(...BG2);doc.roundedRect(M,y,W-M*2,rowH,1.5,1.5,'F');
+    doc.setDrawColor(...BORDER);doc.setLineWidth(0.2);doc.roundedRect(M,y,W-M*2,rowH,1.5,1.5,'S');
+    doc.setFillColor(...fc);doc.roundedRect(M+2,y+2.5,17,5.5,1,1,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(4.8);doc.setTextColor(255,255,255);doc.text(f.level.toUpperCase(),M+10.5,y+6.2,'center');
+    doc.setCharSpace(0);
+    doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(...BLACK);doc.text(f.title,M+23,y+7);
+    if(f.desc){
+      doc.setFont('helvetica','normal');doc.setFontSize(6);doc.setTextColor(...MUTED);
+      const descLines=doc.splitTextToSize(f.desc.substring(0,180),W-M*2-28);
+      doc.text(descLines[0],M+23,y+12);
+    }
+    y+=rowH+2;
+  });
+  doc.setFillColor(...BG3);doc.rect(0,H-13,W,13,'F');
+  doc.setDrawColor(...BORDER);doc.setLineWidth(0.3);doc.line(0,H-13,W,H-13);
+  doc.setFont('helvetica','normal');doc.setFontSize(6);doc.setTextColor(...MUTED);
+  doc.text('⚕ HERMES SECURITY AGENT  //  NOUS RESEARCH HACKATHON 2025',M,H-5);
+  doc.text('hermes-intel.duckdns.org',W-M,H-5,'right');
+  doc.save('hermes-report-'+domain+'-'+Date.now()+'.pdf');
+  showToast('PDF exported!','ok');addLog('ok','PDF report exported');
+}
+
+</script>
+</body>
+</html>
